@@ -1,0 +1,77 @@
+:root {
+  --slt-grey: rgb(240,240,240);
+  --lt-grey-s: 200,200,200;
+  --lt-grey: rgb(var(--lt-grey-s));
+  --grey: rgb(150,150,150);
+  --lt-blue-s: 75, 136, 234;
+  --lt-blue: rgb(var(--lt-blue-s));
+  --d-blue: rgb(27, 69, 137);
+  --lt-yellow-s: 236, 189, 7;
+  --lt-yellow: rgb(var(--lt-yellow-s));
+  --d-yellow: rgb(137, 116, 24);
+  --lt-green-s: 114, 216, 67;
+  --lt-green: rgb(var(--lt-green-s));
+  --d-green: rgb(23, 109, 27);
+  --red-s: 229, 44, 27;
+  --red: rgb(var(--red-s));
+  --green-s: 50, 130, 35;
+  --green: rgb(var(--green-s));
+  --gold-s: 173, 162, 36;
+  --gold: rgb(var(--gold-s));
+  --purp-s: 105, 56, 140;
+  --purp: rgb(var(--purp-s));
+  --plum-s: 140, 56, 137;
+  --plum: rgb(var(--plum-s));
+  --teal-s: 0, 128, 98;
+  --teal: rgb(var(--plum-s));
+  --turq-s: 8, 200, 181;
+  --turq: rgb(var(--turq-s));
+  --white-s: 255,255,255;
+  --white: rgb(var(--white-s));
+  --menu-min-w: 256px;
+  --timeline-width: 300px;
+  --list-item-height: 32px;
+  --hh: 84px;
+  --ah: 24px;
+  --srl: 10;
+  --dps: 6px;
+  --hdlr: 16px;
+  --ease-out: cubic-bezier(0.17, 0.57, 0.43, 1);
+  --icon-size: 16px;
+  font-family: 'Lato', sans-serif;
+}
+
+* {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+*:focus {
+  outline: none;
+}
+
+body, html {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 10pt;
+  position: relative;
+  height: 100%;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+.frame-absolute {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+.flex-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
