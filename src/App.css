@@ -22,8 +22,7 @@
   padding: 4px;
   border: 1px solid var(--white);
   border-radius: 8px;
-} 
-
+}
 
 #main-container:hover {
   background-color: var(--turq);
@@ -47,12 +46,80 @@
   font-size: 12px;
   display: block;
   opacity: 0;
-  transform: translate3d(0,4px,0);
+  transform: translate3d(0, 4px, 0);
   transition: all 0.1s var(--ease-out) 0s;
 }
 
 #main-container:hover #click-to-download:after {
   opacity: 1.0;
-  transform: translate3d(0,-2px,0);
+  transform: translate3d(0, -2px, 0);
   transition: all 0.4s var(--ease-out) 1s;
+}
+
+#login-container {
+  width: 100%;
+  background-color: var(--white);
+  height: 100%;
+  padding: 16px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.form-panel {
+  background-color: var(--white);
+  color: var(--d-grey);
+  min-width: 250px;
+  width: 33%;
+  max-width: 50%;
+  padding: 16px;
+  box-shadow: 2px 2px 3px 3px var(--lt-grey);
+  border-radius: 6px;
+  flex-direction: column;
+  display: flex;
+  align-content: stretch;
+}
+
+.form-prompt {
+  flex-grow: 1;
+  width: 100%;
+}
+
+.form-label {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 21px;
+}
+
+.form-input {
+  width: 100%;
+  min-height: 46px;
+  font-size: 16px;
+  border-radius: 5px;
+  background-color: var(--white);
+  line-height: 20px;
+  vertical-align: middle;
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  border: 1px solid var(--lt-grey);
+  border-radius: 6px;
+  outline: none;
+  box-shadow: var(--slt-grey);
+}
+
+.form-button {
+  width: 100%;
+  border-radius: 6px;
+  height: 50px;
+  border: none;
+  font-size: 18px;
+  font-stretch: 100%;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.login-button {
+  margin-top: 16px;
+  background-color: var(--turq);
+  color: var(--white);
 }
