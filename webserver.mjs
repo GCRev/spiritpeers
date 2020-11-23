@@ -16,10 +16,10 @@ app.get('/', (req, res)=> {
   res.sendFile(`${dirname}/web/index.html`)
 })
 
-app.get('/web/*', (request, response) => {
-  response.sendFile(`${dirname}/web/${request.params['0']}`)
-})
-
 app.get('/src/*', (request, response) => {
   response.sendFile(`${dirname}/src/${request.params['0']}`)
+})
+
+app.get('/*', (request, response) => {
+  response.sendFile(`${dirname}/web/${request.params['0']}`)
 })
