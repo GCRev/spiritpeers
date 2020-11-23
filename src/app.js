@@ -8,8 +8,8 @@ app.commandLine.appendSwitch('use-cmd-decoder', 'passthrough')
 const createWindow = () => {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 2060,
-    height: 1130,
+    width: 1550,
+    height: 750,
     webPreferences: {
       enableRemoteModule: true,
       nodeIntegration: true,
@@ -24,7 +24,7 @@ const createWindow = () => {
   // Open the DevTools.
   mainWindow.webContents.openDevTools()
   const bounds = mainWindow.getBounds()
-  bounds.x = -2342 // do not hardcode
+  // bounds.x = -2342 // do not hardcode
   mainWindow.setBounds(bounds)
 
 }
