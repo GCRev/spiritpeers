@@ -19,10 +19,6 @@ app.get('/', (req, res)=> {
   res.sendFile(`${dirname}/web/index.html`)
 })
 
-app.get('/global/*', (request, response) => {
-  response.sendFile(`${dirname}/global/${request.params['0']}`)
-})
-
 app.get('/src/*', (request, response) => {
   response.sendFile(`${dirname}/src/${request.params['0']}`)
 })
@@ -31,11 +27,16 @@ app.get('/*', (request, response) => {
   response.sendFile(`${dirname}/web/${request.params['0']}`)
 })
 
+async function loadCache() {
+  const files = await fs.readdir(contact_requests_path)
+  let currentFile = 0
+}
+
 // check for the necessary chache/contact_requests directory
 fs.access(contact_requests_path)
   .then(() => {
     // load the requests cache
-    
+    loadCache()
   })
   .catch(err => {
     // check err.code for ENOENT. If it's something else then we're phucked
