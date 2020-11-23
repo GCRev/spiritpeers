@@ -2,7 +2,7 @@ import Express from 'express'
 import Parser from 'body-parser'
 import Path from 'path'
 import ExpressWs from 'express-ws'
-import {promises as fs} from 'fs'
+import {fs, promises as fsp} from 'fs'
 
 const app = Express()
 
@@ -28,12 +28,51 @@ app.get('/*', (request, response) => {
 })
 
 async function loadCache() {
-  const files = await fs.readdir(contact_requests_path)
+  const files = await fsp.readdir(contact_requests_path)
   let currentFile = 0
+  const newLineCode = '\n'.charCodeAt()
+  const loadFile = ()=> {
+    const fileRead = fs.createReadStream(files[currentFile])
+    let line = ''
+
+    fileRead.on('data', data => {
+      for (const byte of data) {
+        if (byte !== newLineCode) {
+          line += String.fromCharCode(byte)
+        } else {
+          const split = line.split(',')
+          const fromPeerUDID = split[0]
+          const toPeerUDID = split[1]
+          const fromPeerAvailPorts = split[3].split(':')
+          cache.set(`${fromPeerUDID}-${toPeerUDID}`, {
+            fromPeerUDID: fromPeerUDID,
+            toPeerUDID: toPeerUDID,
+            availablePorts: fromPeerAvailPorts
+          })
+          line = ''
+        }
+      }
+    })
+
+    fileRead.on('error', err => {
+      console.log('ass')
+      console.log(err)
+    })
+
+    fileRead.on('end', () => {
+      if (currentFile < files.length) {
+        currentFile++
+        loadFile()
+      } else {
+        return
+      }
+    })
+  }
+  loadFile()
 }
 
 // check for the necessary chache/contact_requests directory
-fs.access(contact_requests_path)
+fsp.access(contact_requests_path)
   .then(() => {
     // load the requests cache
     loadCache()
@@ -41,12 +80,54 @@ fs.access(contact_requests_path)
   .catch(err => {
     // check err.code for ENOENT. If it's something else then we're phucked
     if (err.code === 'ENOENT') {
-      return fs.mkdir(contact_requests_path, {recursive: true})
+      return fsp.mkdir(contact_requests_path, {recursive: true})
     }
   })
   .catch(() => {
     console.log('Unable to create cache requests directory')
   })
 
-app.post('/wishfor', (request, response) => {
+app.post('/talkto', (req, res) => {
+  if (req.body.source && 
+    req.body.target &&
+    req.body.availablePorts) {
+    const forwardKey = `${req.body.source}-${req.body.target}`
+    const reverseKey = `${req.body.target}-${req.body.source}`
+    if (cache.has(reverseKey)) {
+      // handle the case where there is already a request from another peer to this peer
+      cache.delete(reverseKey)
+      res.json({ 
+        success: true,
+        status: 'accept_response',
+        message: `Request sent from: ${req.body.source}`
+      })
+    } else if (!cache.has(forwardKey)) {
+      cache.set(forwardKey, {
+        fromPeerUDID: req.body.source,
+        toPeerUDID: req.body.target,
+        availablePorts: req.body.availablePorts
+      })
+      res.json({ 
+        success: true,
+        status: 'pending_response',
+        message: `Request sent to: ${req.body.target}`
+      })
+    } else {
+      res.json({ 
+        success: true,
+        status: 'pending_response',
+        message: `Request already to: ${req.body.target}`
+      })
+    }
+  } else {
+    const missingParams = []
+    if (!req.body.source) missingParams.push('Source UDID')
+    if (!req.body.target) missingParams.push('Target UDID')
+    if (!req.body.availablePorts) missingParams.push('Available Ports')
+    res.json({
+      success: false,
+      status: 'error',
+      message: `Missing request parameters: ${missingParams.join(', ')}`
+    })
+  }
 })
