@@ -16,6 +16,10 @@ app.get('/', (req, res)=> {
   res.sendFile(`${dirname}/web/index.html`)
 })
 
+app.get('/global/*', (request, response) => {
+  response.sendFile(`${dirname}/global/${request.params['0']}`)
+})
+
 app.get('/src/*', (request, response) => {
   response.sendFile(`${dirname}/src/${request.params['0']}`)
 })
