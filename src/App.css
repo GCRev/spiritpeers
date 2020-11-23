@@ -1,38 +1,58 @@
-.App {
+#main-container {
+  width: 100%;
+  background-color: var(--white);
+  color: var(--white);
   text-align: center;
-}
-
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
+  height: 224px;
+  font-size: 24px;
+  font-weight: 100;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  cursor: pointer;
+  transition: background-color 0.3s var(--ease-out);
 }
 
-.App-link {
-  color: #61dafb;
+.icon {
+  width: 128px;
+  height: 128px;
+  box-sizing: border-box;
+  fill: var(--turq);
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.icon.box {
+  padding: 4px;
+  border: 1px solid var(--white);
+  border-radius: 8px;
+} 
+
+
+#main-container:hover {
+  background-color: var(--turq);
+}
+
+#main-container .icon {
+  transition: fill 0.6s var(--ease-out);
+}
+
+#main-container:hover .icon {
+  fill: var(--white);
+}
+
+#click-to-download {
+  height: 1em;
+  letter-spacing: 3px;
+}
+
+#click-to-download:after {
+  content: "(CLICK TO DOWNLOAD)";
+  font-size: 12px;
+  display: block;
+  opacity: 0;
+  transform: translate3d(0,4px,0);
+  transition: all 0.1s var(--ease-out) 0s;
+}
+
+#main-container:hover #click-to-download:after {
+  opacity: 1.0;
+  transform: translate3d(0,-2px,0);
+  transition: all 0.4s var(--ease-out) 1s;
 }

@@ -1,23 +1,14 @@
-import logo from './logo.svg';
 import './App.css';
+import './index.css';
+// import logo from './icons_proc/peers_logo.svg#peers_logo'
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div id="main-container" class="flex-center">
+      <svg viewBox="0 0 128 128" class="icon box logo">
+        <use href="./src/icons_proc/peers_logo.svg#peers_logo"></use>
+      </svg>
+      <div id="click-to-download">SPIRIT</div>
     </div>
   );
 }
