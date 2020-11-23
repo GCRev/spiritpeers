@@ -1,8 +1,10 @@
 :root {
-  --slt-grey: rgb(240,240,240);
-  --lt-grey-s: 200,200,200;
+  --slt-grey: rgb(240, 240, 240);
+  --lt-grey-s: 200, 200, 200;
   --lt-grey: rgb(var(--lt-grey-s));
-  --grey: rgb(150,150,150);
+  --grey: rgb(150, 150, 150);
+  --d-grey-s: 35, 40, 45;
+  --d-grey: rgb(var(--d-grey-s));
   --lt-blue-s: 75, 136, 234;
   --lt-blue: rgb(var(--lt-blue-s));
   --d-blue: rgb(27, 69, 137);
@@ -26,7 +28,7 @@
   --teal: rgb(var(--plum-s));
   --turq-s: 8, 200, 181;
   --turq: rgb(var(--turq-s));
-  --white-s: 255,255,255;
+  --white-s: 255, 255, 255;
   --white: rgb(var(--white-s));
   --menu-min-w: 256px;
   --timeline-width: 300px;
@@ -44,6 +46,7 @@
 * {
   user-select: none;
   -webkit-user-select: none;
+  box-sizing: border-box;
 }
 
 *:focus {
@@ -75,4 +78,8 @@ body, html {
   justify-content: center;
   align-items: center;
   position: relative;
+}
+
+#root {
+  height: 100%;
 }
