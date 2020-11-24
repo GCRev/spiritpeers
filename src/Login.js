@@ -3,14 +3,53 @@ import './App.css';
 import './index.css';
 
 class Login extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      isLogin: true
+    };
+  }
+
+  handleLoginSignUp() {
+    this.setState({
+      isLogin: !this.state.isLogin
+    });
+  }
+
+  renderLoginSignUpEl(text) {
+    return (
+      <p class="LoginSignUpEl" onClick={() => this.handleLoginSignUp()}>{text}</p>
+    );
+  }
+
+  renderLogin() {
+    return (
+      <div class="form-panel">
+        <Prompts label="Username" type="text"></Prompts>
+        <Prompts label="Password" type="password"></Prompts>
+        <button class="form-button login-button">Log in to Spirit</button>
+        {this.renderLoginSignUpEl("Don't have an account? Sign Up!")}
+      </div>
+    );
+  }
+
+  renderSignUp() {
+    return (
+      <div class="form-panel">
+        <Prompts label="Email" type="email"></Prompts>
+        <Prompts label="Username" type="text"></Prompts>
+        <Prompts label="Password" type="password"></Prompts>
+        <Prompts label="Confirm Password" type="password"></Prompts>
+        <button class="form-button login-button">Sign Up for Spirit</button>
+        {this.renderLoginSignUpEl("Have an account? Login!")}
+      </div>
+    );
+  }
+
   render() {
     return (
       <div id="login-container" class="flex-center">
-        <div class="form-panel">
-          <Prompts label="Username" type="text"></Prompts>
-          <Prompts label="Password" type="password"></Prompts>
-          <button class="form-button login-button">Login to Spirit Peers</button>
-        </div>
+        {this.state.isLogin ? this.renderLogin() : this.renderSignUp()}
       </div>
     );
   }

@@ -28,8 +28,12 @@
   --teal: rgb(var(--plum-s));
   --turq-s: 8, 200, 181;
   --turq: rgb(var(--turq-s));
+  --d-turq-s: 8, 170, 155;
+  --d-turq: rgb(var(--d-turq-s));
   --white-s: 255, 255, 255;
   --white: rgb(var(--white-s));
+  --black-s: 0, 0, 0;
+  --black: rgb(var(--black-s));
   --menu-min-w: 256px;
   --timeline-width: 300px;
   --list-item-height: 32px;
@@ -40,6 +44,7 @@
   --hdlr: 16px;
   --ease-out: cubic-bezier(0.17, 0.57, 0.43, 1);
   --icon-size: 16px;
+  --standard-box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
   font-family: 'Lato', sans-serif;
 }
 
