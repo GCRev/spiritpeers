@@ -1,22 +1,22 @@
-import React from 'react';
-import './App.css';
-import './index.css';
+import React from 'react'
+import './App.css'
+import './index.css'
 
-class Login extends React.Component {
+class LoginDisplay extends React.Component {
   render() {
     return (
       <div id="login-container" class="flex-center">
         <div class="form-panel">
-          <Prompts label="Username" type="text"></Prompts>
-          <Prompts label="Password" type="password"></Prompts>
-          <button class="form-button login-button">Login to Spirit Peers</button>
+          <PromptDisplay label="Username" type="text" handleChange={this.props.updateUsername}></PromptDisplay>
+          <PromptDisplay label="Password" type="password" handleChange={this.props.updatePassword}></PromptDisplay>
+          <button class="form-button login-button" onClick={this.props.logon}>LAUNCH</button>
         </div>
       </div>
-    );
+    )
   }
 }
 
-class Prompts extends React.Component {
+class PromptDisplay extends React.Component {
   render() {
     return (
       <div>
@@ -25,12 +25,12 @@ class Prompts extends React.Component {
             <label class="form-label">{this.props.label}</label>
           </dt>
           <dt>
-            <input class="form-input" type={this.props.type}></input>
+            <input class="form-input" type={this.props.type} onChange={this.props.handleChange}></input>
           </dt>
         </dl>
       </div>
-    );
+    )
   }
 }
 
-export default Login;
+export default LoginDisplay;

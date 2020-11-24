@@ -73,8 +73,8 @@
   width: 33%;
   max-width: 50%;
   padding: 16px;
-  box-shadow: 2px 2px 3px 3px var(--lt-grey);
-  border-radius: 6px;
+  box-shadow: 0 0 12px 0 var(--turq);
+  border-radius: 8px;
   flex-direction: column;
   display: flex;
   align-content: stretch;
@@ -95,27 +95,28 @@
   width: 100%;
   min-height: 46px;
   font-size: 16px;
-  border-radius: 5px;
+  border-radius: 3px;
   background-color: var(--white);
   line-height: 20px;
   vertical-align: middle;
   background-repeat: no-repeat;
   background-position: right 8px center;
   border: 1px solid var(--lt-grey);
-  border-radius: 6px;
   outline: none;
   box-shadow: var(--slt-grey);
+  padding: 2px 0.5em;
 }
 
 .form-button {
   width: 100%;
-  border-radius: 6px;
+  border-radius: 3px;
   height: 50px;
   border: none;
   font-size: 18px;
   font-stretch: 100%;
-  font-weight: 700;
+  font-weight: 100;
   line-height: 24px;
+  cursor: pointer;
 }
 
 .login-button {
