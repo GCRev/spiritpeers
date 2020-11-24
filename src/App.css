@@ -58,7 +58,7 @@
 
 #login-container {
   width: 100%;
-  background-color: var(--white);
+  background-color: var(--turq);
   height: 100%;
   padding: 16px;
   flex-direction: column;
@@ -71,10 +71,10 @@
   color: var(--d-grey);
   min-width: 250px;
   width: 33%;
-  max-width: 50%;
+  max-width: 480px;
   padding: 16px;
-  box-shadow: 0 0 12px 0 var(--turq);
   border-radius: 8px;
+  box-shadow: var(--standard-box-shadow);
   flex-direction: column;
   display: flex;
   align-content: stretch;
@@ -117,10 +117,25 @@
   font-weight: 100;
   line-height: 24px;
   cursor: pointer;
+  transition: .2s;
+}
+
+.form-button:hover {
+  background-color: var(--d-turq);
 }
 
 .login-button {
   margin-top: 16px;
   background-color: var(--turq);
   color: var(--white);
+}
+
+.LoginSignUpEl:hover {
+  color: var(--black);
+}
+
+.LoginSignUpEl:hover {
+  cursor: pointer;
+  color: var(--d-blue);
+  text-decoration: underline;
 }
