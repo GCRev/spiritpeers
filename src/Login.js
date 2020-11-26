@@ -1,80 +1,143 @@
-import React from 'react'
 import './App.css'
 import './index.css'
+import React from 'react'
 
-class Login extends React.Component {
-  constructor(props) {
-    super(props)
+class LoginDisplay extends React.Component {
+  constructor(data) {
+    super()
+    this.data = data
     this.state = {
-      isLogin: true
+      signUp: !data.spiritClient.foundResourceFile,
+      emailValid: data.spiritClient.validateEmail(),
+      usernameValid: data.spiritClient.validateUsername(),
+      passwordValid: data.spiritClient.validatePassword()
+    }
+    this.logonHandler = this.logonHandler.bind(this)
+    this.updateFromPrompt = this.updateFromPrompt.bind(this)
+  }
+
+  logonHandler() {
+    this.props.logonHandler({
+      email: this.state.email,
+      username: this.state.username,
+      password: this.state.password
+    })
+  }
+  
+  updateFromPrompt(propName, value) {
+    // this is cheating
+    this.setState({[propName]: value})
+
+    if (propName.startsWith('password')) {
+      const password = propName === 'password' ? value : this.state.password
+      const password_confirm = propName === 'password_confirm' ? value : this.state.password_confirm
+      this.setState({passwordValid: this.props.spiritClient.validatePassword(password, password_confirm)})
+    } else if (propName === 'username') {
+      this.setState({usernameValid: this.props.spiritClient.validateUsername(value)})
+    } else if (propName === 'email') {
+      this.setState({emailValid: this.props.spiritClient.validateEmail(value)})
     }
   }
 
-  handleLoginSignUp() {
+  showSignUp(signUp) {
     this.setState({
-      isLogin: !this.state.isLogin
+      signUp: signUp
     })
   }
 
-  renderLoginSignUpEl(text) {
-    return (
-      <p class="LoginSignUpEl" onClick={() => this.handleLoginSignUp()}>{text}</p>
-    )
+  componentDidMount() {
+    this.props.spiritClient.on('show-sign-up', this.showSignUp, this)
+  }
+
+  componentWillUnmount() {
+    this.props.spiritClient.un('show-sign-up', this.showSignUp)
   }
 
   renderLogin() {
     return (
-      <div class="form-panel">
-        <Prompts label="Username" type="text"></Prompts>
-        <Prompts label="Password" type="password"></Prompts>
-        <button class="form-button login-button">Log in to Spirit</button>
-        {this.renderLoginSignUpEl("Don't have an account? Sign Up!")}
+      <div className="form-panel">
+        <PromptsDisplay handleChange={this.updateFromPrompt} label="Username" propName="username" type="text"></PromptsDisplay>
+        <PromptsDisplay handleChange={this.updateFromPrompt} label="Password" propName="password" type="password"></PromptsDisplay>
+        <button className="form-button login-button" onClick={this.logonHandler}>LAUNCH</button>
       </div>
     )
   }
 
+
   renderSignUp() {
+    const allValid = !(this.state.passwordValid || []).length &&
+                     !(this.state.usernameValid || []).length &&
+                     !(this.state.emailValid || []).length
+    const className = `form-button login-button ${allValid ? '' : 'disabled'}`
     return (
-      <div class="form-panel">
-        <Prompts label="Email" type="email"></Prompts>
-        <Prompts label="Username" type="text"></Prompts>
-        <Prompts label="Password" type="password"></Prompts>
-        <Prompts label="Confirm Password" type="password"></Prompts>
-        <button class="form-button login-button">Sign Up for Spirit</button>
-        {this.renderLoginSignUpEl("Have an account? Login!")}
+      <div className="form-panel">
+        <PromptsDisplay 
+          handleChange={this.updateFromPrompt} 
+          label="Email"
+          propName="email"
+          type="email"
+          invalidReasons={this.state.emailValid}></PromptsDisplay>
+        <PromptsDisplay 
+          handleChange={this.updateFromPrompt}
+          label="Username"
+          propName="username" 
+          type="text"
+          invalidReasons={this.state.usernameValid}></PromptsDisplay>
+        <PromptsDisplay handleChange={this.updateFromPrompt} label="Password" propName="password" type="password"></PromptsDisplay>
+        <PromptsDisplay 
+          handleChange={this.updateFromPrompt} 
+          label="Confirm Password" 
+          propName="password_confirm" 
+          type="password" 
+          invalidReasons={this.state.passwordValid}></PromptsDisplay>
+        <button className={className} onClick={this.logonHandler}>LAUNCH</button>
       </div>
     )
   }
 
   render() {
     return (
-      <div id="login-container" class="flex-center">
-        <div class="form-panel">
-          <Prompts label="Username" type="text"></Prompts>
-          <Prompts label="Password" type="password"></Prompts>
-          <button class="form-button login-button">Login to Spirit Peers</button>
-        </div>
-        {this.state.isLogin ? this.renderLogin() : this.renderSignUp()}
+      <div id="login-container" className="flex-center">
+        {this.state.signUp ? this.renderSignUp() : this.renderLogin() }
       </div>
     )
   }
 }
 
-class Prompts extends React.Component {
+class PromptsDisplay extends React.Component {
+  constructor() {
+    super()
+    this.handleChange = this.handleChange.bind(this)
+  }
+
+  handleChange(e) {
+    if (this.props.propName) {
+      this.props.handleChange(this.props.propName, e.target.value)
+    }
+  }
+
   render() {
     return (
       <div>
-        <dl class="form-prompt">
+        <dl className="form-prompt">
           <dt>
-            <label class="form-label">{this.props.label}</label>
+            <label className="form-label">{this.props.label}</label>
           </dt>
           <dt>
-            <input class="form-input" type={this.props.type} onChange={this.props.handleChange}></input>
+            <input className="form-input" type={this.props.type} onChange={this.handleChange}></input>
           </dt>
+          {!!(this.props.invalidReasons || []).length &&
+            <dd className="invalid-reasons">
+            {this.props.invalidReasons.map((reason, index) => {
+              return <p key={index}>{reason}</p>
+            })
+            }
+            </dd>
+          }
         </dl>
       </div>
     )
   }
 }
 
-export default Login
+export default LoginDisplay

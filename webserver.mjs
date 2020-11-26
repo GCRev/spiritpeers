@@ -71,21 +71,27 @@ async function loadCache() {
   loadFile()
 }
 
-// check for the necessary chache/contact_requests directory
-fsp.access(contact_requests_path)
-  .then(() => {
-    // load the requests cache
+async function checkForCache() {
+  // check for the necessary chache/contact_requests directory
+  try {
+    await fsp.access(contact_requests_path)
     loadCache()
-  })
-  .catch(err => {
+  } catch(err) {
     // check err.code for ENOENT. If it's something else then we're phucked
-    if (err.code === 'ENOENT') {
-      return fsp.mkdir(contact_requests_path, {recursive: true})
+    if (err.code !== 'ENOENT') {
+      console.log('Unable to create cache requests directory because of wrong access')
+      return
     }
-  })
-  .catch(() => {
+  }
+
+  try {
+    return await fsp.mkdir(contact_requests_path, {recursive: true})
+  } catch (err) {
     console.log('Unable to create cache requests directory')
-  })
+  }
+}
+
+checkForCache()
 
 app.post('/talkto', (req, res) => {
   if (req.body.source && 

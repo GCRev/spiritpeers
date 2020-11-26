@@ -1,6 +1,7 @@
 const {app, ipcMain, BrowserWindow} = require('electron')
 const path =  require('path')
 const isDev = require('electron-is-dev')
+const EnvPaths = require('env-paths')('SpiritPeers', {suffix: ''})
 
 // app.allowRendererProcessReuse = false
 app.commandLine.appendSwitch('enable-webgl2-compute-context')
@@ -55,4 +56,18 @@ app.on('activate', () => {
 
 ipcMain.handle('hot-reload', mainWindow => {
   createWindow()
+})
+
+ipcMain.handle('get-env-path', (evt, type) => {
+  if (typeof type === 'string') {
+    return EnvPaths[type || 'data']
+  } else {
+    return {
+      data: EnvPaths.data,
+      config: EnvPaths.config,
+      cache: EnvPaths.cache,
+      log: EnvPaths.log,
+      temp: EnvPaths.temp
+    }
+  }
 })

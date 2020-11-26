@@ -11,6 +11,11 @@
   transition: background-color 0.3s var(--ease-out);
 }
 
+.disabled { 
+  pointer-events: none;
+  opacity: 0.5;
+}
+
 .icon {
   width: 128px;
   height: 128px;
@@ -83,6 +88,8 @@
 .form-prompt {
   flex-grow: 1;
   width: 100%;
+  margin: 0;
+  margin-bottom: 8px;
 }
 
 .form-label {
@@ -130,12 +137,22 @@
   color: var(--white);
 }
 
-.LoginSignUpEl:hover {
+.login-sign-up {
   color: var(--black);
 }
 
-.LoginSignUpEl:hover {
+.login-sign-up:hover {
   cursor: pointer;
   color: var(--d-blue);
   text-decoration: underline;
+}
+
+dd.invalid-reasons {
+  margin: 4px 0 0 8px;
+}
+
+dd.invalid-reasons > p {
+  margin: 0;
+  color: var(--red);
+  font-size: 11px;
 }

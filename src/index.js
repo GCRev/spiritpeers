@@ -1,12 +1,16 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import './index.css';
-import App from './App';
+import AppDisplay from './App';
 import reportWebVitals from './reportWebVitals';
+import SpiritClient from './spiritClient';
+
+const spiritClient = new SpiritClient()
+window.spiritClient = spiritClient
 
 ReactDOM.render(
   <React.StrictMode>
-    <App />
+  <AppDisplay spiritClient={spiritClient}/>
   </React.StrictMode>,
   document.getElementById('root')
 );

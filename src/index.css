@@ -44,7 +44,7 @@
   --hdlr: 16px;
   --ease-out: cubic-bezier(0.17, 0.57, 0.43, 1);
   --icon-size: 16px;
-  --standard-box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+  --standard-box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.2), 0 2px 20px 0 rgba(0, 0, 0, 0.19);
   font-family: 'Lato', sans-serif;
 }
 
