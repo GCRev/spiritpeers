@@ -17,9 +17,7 @@ class Evt {
     existingListeners.set(fn, {fn: fn, scope: scope})
   }
 
-  /*
-   * this does not fire the event
-   */
+  /* this does not fire the event */
   once(evtName, fn, scope) {
     if (typeof evtName !== 'string') return
     if (!evtName) return
@@ -38,11 +36,14 @@ class Evt {
     if (existingListeners) {
       existingListeners.delete(fn)
     }
+    if (!existingListeners.size) {
+      this.listeners.delete(evtName)
+    }
   }
   
   /*
    * delete all events with the evtName
-   * or delets all events if evtName is boolean:true
+   * or deletes all events if evtName is boolean:true
    */
   purge(evtName) {
     if (typeof evtName === 'string') {
@@ -54,9 +55,7 @@ class Evt {
     }
   }
 
-  /*
-   * look through all events and delete anything with a matching scope
-   */
+  /* look through all events and delete anything with a matching scope */
   purgeScope(scope) {
     if (!scope) return
 

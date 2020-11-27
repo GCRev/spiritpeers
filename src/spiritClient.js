@@ -1,38 +1,65 @@
 import Evt from './Evt'
+import {v4 as uuidv4} from 'uuid'
 const ipcr = window.require('electron').ipcRenderer
 const fs = window.require('fs')
 const fsp = window.require('fs').promises
 const crypto = window.require('crypto')
 const path = window.require('path')
+// const {Transform} = window.require('stream')
+const {pipeline, finished, Readable, Writable} = window.require('stream')
+const {StringDecoder} = window.require('string_decoder')
 
 class SpiritClient extends Evt { 
   constructor() {
     super()
-    this.foundResourceFile = false
+    const data = {foundResourceFile: false, contacts: {}}
+    const proxy = {
+      /*
+       * budget redux
+       *
+       * but it's not redux so literally no one will care
+       */
+      set: (obj, prop, value) => {
+        const oldval = obj[prop]
+        obj[prop] = value
+        if (oldval !== value) {
+          this.fire(`set-${prop}`, value)
+        }
+        return true
+      }
+    }
+    this.data = new Proxy(data, proxy)
+    this.vault = {contacts: {}}
     this.getVaultFile()
       .then(() => {
-        this.fire('show-sign-up', !this.foundResourceFile)
+        this.fire('show-sign-up', !this.data.foundResourceFile)
       })
   }
 
   setUsername(username) {
-    this.username = username
+    this.data.username = username
   }
 
   setPassword(password) {
-    this.password = password
+    this.data.password = password
   }
 
   setEmail(email) {
-    this.email = email
+    this.data.email = email
+  }
+
+  setContacts(contacts) {
+    if (!contacts) return
+    this.data.contacts = contacts
   }
 
   setHash(hashBuffer) {
     if (typeof hashBuffer === 'string') {
-      this.hash = Buffer.from(hashBuffer, 'hex')
+      this.data.hash = Buffer.from(hashBuffer, 'hex')
     } else if (hashBuffer instanceof Buffer) {
-      this.hash = hashBuffer
+      this.data.hash = hashBuffer
     }
+    this.vault.hash = this.data.hash.toString('hex')
   }
 
   validateUsername(username) {
@@ -69,37 +96,125 @@ class SpiritClient extends Evt {
     return reasons
   }
 
+  vaultToData() {
+    if (this.vault.hash) this.setHash(this.vault.hash)
+    if (this.vault.username) this.setUsername(this.vault.username)
+    if (this.vault.email) this.setEmail(this.vault.email)
+    if (this.vault.contacts) this.setContacts(this.vault.contacts)
+  }
+
+  dataToVault() {
+    this.vault.hash = this.data.hash.toString('hex')
+    if (this.data.email) this.vault.email = this.data.email
+    if (this.data.username) this.vault.username = this.data.username
+    if (this.data.contacts) this.vault.contacts = this.data.contacts
+  }
+
   async getVaultFile() {
     const dataPath  = await ipcr.invoke('get-env-path', 'data')
     const resolvedPath = path.resolve(dataPath)
     const filePath = path.resolve(dataPath, './vault.sp2p')
     try {
       await fsp.access(filePath)
-      this.foundResourceFile = true
+      this.data.foundResourceFile = true
     } catch (err) {
       await fsp.mkdir(resolvedPath, {recursive: true})
-      this.foundResourceFile = false
+      this.data.foundResourceFile = false
     }
     return filePath 
   } 
 
   async loadVaultFile() {
+    if (!this.data.hash) return 
+
     const pathToVault = await this.getVaultFile()
 
-    if (!this.foundResourceFile) {
-
+    if (!this.data.foundResourceFile) {
+      return this.writeVaultFile()
     } else {
-      const readStream = fs.createReadStream(pathToVault)
+      return new Promise((resolve, reject) => {
+        let buffer = ''
+        let ivPos = 0
+        const iv = new Uint8Array(16)
+
+        /* read the first 32 bytes (which is the IV) */
+        const readIvStream = fs.createReadStream(pathToVault, {end: iv.length - 1})
+        readIvStream.on('data', chunk => {
+          const len = Math.min(ivPos + chunk.length, iv.length - ivPos)
+          for (let a = 0; a < len; a++) {
+            iv[ivPos + a] = chunk[a]
+          }
+          ivPos += len
+        })
+        finished(readIvStream, () => {
+          const decoder = new StringDecoder('utf8')
+          const decipher = crypto.createDecipheriv('aes-256-cbc', this.data.hash, iv)
+          const readStream = fs.createReadStream(pathToVault, {start: iv.length})
+          const writeToBuffer = new Writable({
+            write(chunk, enc, callback) {
+              buffer += decoder.write(chunk)
+              callback(chunk)
+            }
+          })
+
+          pipeline([readStream, decipher, writeToBuffer], () => {
+            try {
+              /*
+               * this call to decipher.final() is required here otherwise
+               * decipher holds remaining data that isn't written to the pipe,
+               * which is the stupidest shit I've ever seen. Wasted ~3 hrs
+               */
+              buffer += decoder.write(decipher.final())
+              buffer += decoder.end()
+              Object.assign(this.vault, JSON.parse(buffer))
+              this.fire('loaded-vault', this)
+              this.vaultToData()
+              resolve()
+            } catch (err) {
+              // fuq
+              reject(Error('Incorrect username or password'))
+            }
+          })
+        })
+      })
     }
+  }
+
+  async writeVaultFile() {
+    if (!this.data.hash) return 
+
+    const pathToVault = await this.getVaultFile()
+
+    this.dataToVault()
+    return new Promise(resolve => {
+      /* generate a random iv -- do this every time because why not */
+      crypto.randomFill(new Uint8Array(16), (err, iv) => {
+        const cipher = crypto.createCipheriv('aes-256-cbc', this.data.hash, iv)
+        const writeStream = fs.createWriteStream(pathToVault)
+
+        writeStream.write(iv, () => {
+          const readFromBuffer = new Readable()
+          readFromBuffer.push(new Buffer(JSON.stringify(this.vault), 'utf8'))
+          readFromBuffer.push(null)
+          pipeline([readFromBuffer, cipher, writeStream], () => {
+            resolve()
+          })
+        })
+      })
+    })
   }
 
   async logon(username, password, email) {
     if (typeof username === 'undefined') {
-      username = this.username
+      username = this.data.username
+    } else if (typeof username === 'string') {
+      this.setUsername(username)
     }
 
     if (typeof password === 'undefined') {
-      password = this.password
+      password = this.data.password
+    } else if (typeof password === 'string') {
+      this.setPassword(password)
     }
 
     if (typeof email === 'string') {
@@ -113,10 +228,14 @@ class SpiritClient extends Evt {
       const buffer = hash.digest() 
       this.setHash(Buffer.from(buffer))
 
-      await this.loadVaultFile()
+      try {
+        await this.loadVaultFile()
 
-      this.fire('logon')
-      return buffer
+        this.fire('logon')
+        return buffer
+      } catch (err) {
+        this.fire('logon-failure', err.message)
+      }
     }
   }
   

@@ -2,18 +2,14 @@ import './App.css';
 import './index.css';
 import React from 'react';
 import LoginDisplay from './Login.js';
+import ChatMainDisplay from './ChatMain.js';
 
 class AppDisplay extends React.Component {
   constructor(data) {
     super()
-    this.logonHandler = this.logonHandler.bind(this)
     this.state = {
       loggedIn: !!data.spiritClient.hash
     }
-  }
-
-  logonHandler(state) {
-    this.props.spiritClient.logon(state.username, state.password, state.email)
   }
 
   logon() {
@@ -40,7 +36,9 @@ class AppDisplay extends React.Component {
 
   render() {
     return (
-      this.state.loggedIn ? <div></div> : <LoginDisplay spiritClient={this.props.spiritClient} logonHandler={this.logonHandler}/>
+      this.state.loggedIn ? 
+        <ChatMainDisplay spiritClient={this.props.spiritClient}/> :
+        <LoginDisplay spiritClient={this.props.spiritClient}/>
     )
   }
 }

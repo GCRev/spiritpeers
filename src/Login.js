@@ -7,7 +7,7 @@ class LoginDisplay extends React.Component {
     super()
     this.data = data
     this.state = {
-      signUp: !data.spiritClient.foundResourceFile,
+      signUp: !data.spiritClient.data.foundResourceFile,
       emailValid: data.spiritClient.validateEmail(),
       usernameValid: data.spiritClient.validateUsername(),
       passwordValid: data.spiritClient.validatePassword()
@@ -17,23 +17,19 @@ class LoginDisplay extends React.Component {
   }
 
   logonHandler() {
-    this.props.logonHandler({
-      email: this.state.email,
-      username: this.state.username,
-      password: this.state.password
-    })
+    this.props.spiritClient.logon(this.state.username, this.state.password, this.state.email)
   }
   
   updateFromPrompt(propName, value) {
-    // this is cheating
+    /* this is cheating */
     this.setState({[propName]: value})
 
     if (propName.startsWith('password')) {
       const password = propName === 'password' ? value : this.state.password
       const password_confirm = propName === 'password_confirm' ? value : this.state.password_confirm
-      this.setState({passwordValid: this.props.spiritClient.validatePassword(password, password_confirm)})
+      this.setState({passwordValid: this.props.spiritClient.validatePassword(password, password_confirm), logonValid: []})
     } else if (propName === 'username') {
-      this.setState({usernameValid: this.props.spiritClient.validateUsername(value)})
+      this.setState({usernameValid: this.props.spiritClient.validateUsername(value), logonValid: []})
     } else if (propName === 'email') {
       this.setState({emailValid: this.props.spiritClient.validateEmail(value)})
     }
@@ -45,19 +41,32 @@ class LoginDisplay extends React.Component {
     })
   }
 
+  logonFailure(message) {
+    this.setState({
+      logonValid: [message]
+    })
+  }
+
   componentDidMount() {
     this.props.spiritClient.on('show-sign-up', this.showSignUp, this)
+    this.props.spiritClient.on('logon-failure', this.logonFailure, this)
   }
 
   componentWillUnmount() {
     this.props.spiritClient.un('show-sign-up', this.showSignUp)
+    this.props.spiritClient.un('logon-failure', this.logonFailure)
   }
 
   renderLogin() {
     return (
       <div className="form-panel">
         <PromptsDisplay handleChange={this.updateFromPrompt} label="Username" propName="username" type="text"></PromptsDisplay>
-        <PromptsDisplay handleChange={this.updateFromPrompt} label="Password" propName="password" type="password"></PromptsDisplay>
+        <PromptsDisplay 
+          handleChange={this.updateFromPrompt} 
+          label="Password" 
+          propName="password" 
+          type="password"
+          invalidReasons={this.state.logonValid}></PromptsDisplay>
         <button className="form-button login-button" onClick={this.logonHandler}>LAUNCH</button>
       </div>
     )
