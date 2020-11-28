@@ -108,6 +108,9 @@ class SpiritClient extends Evt {
     if (this.data.email) this.vault.email = this.data.email
     if (this.data.username) this.vault.username = this.data.username
     if (this.data.contacts) this.vault.contacts = this.data.contacts
+    if (!this.data.uuid) {
+      this.vault.uuid = uuidv4()
+    }
   }
 
   async getVaultFile() {
@@ -201,6 +204,17 @@ class SpiritClient extends Evt {
           })
         })
       })
+    })
+  }
+
+  async connect() {
+    if (this.webSocket) {
+      this.webSocket.close()
+    }
+
+    this.webSocket = new WebSocket('wss://localhost:54045')
+    this.webSocket.addEventListener('message', evt => {
+      console.log('ws', evt)
     })
   }
 
