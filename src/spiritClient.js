@@ -1,5 +1,5 @@
 import Evt from './Evt'
-import {v4 as uuidv4} from 'uuid'
+// import {v4 as uuidv4} from 'uuid'
 const ipcr = window.require('electron').ipcRenderer
 const fs = window.require('fs')
 const fsp = window.require('fs').promises
@@ -53,6 +53,11 @@ class SpiritClient extends Evt {
     this.data.contacts = contacts
   }
 
+  setUuid(uuid) {
+    if (!uuid) return
+    this.data.uuid = uuid
+  }
+
   setHash(hashBuffer) {
     if (typeof hashBuffer === 'string') {
       this.data.hash = Buffer.from(hashBuffer, 'hex')
@@ -101,6 +106,38 @@ class SpiritClient extends Evt {
     if (this.vault.username) this.setUsername(this.vault.username)
     if (this.vault.email) this.setEmail(this.vault.email)
     if (this.vault.contacts) this.setContacts(this.vault.contacts)
+    if (this.vault.uuid) this.setUuid(this.vault.uuid)
+  }
+
+  generateHilariousRandomIdentifier() {
+    /*
+     * Generate a series of consonant+vowel pairs of a fixed (40char) length
+     * place a space somewhere at random in the middle
+     */
+    const consonants = 'bcdfghjklmnpqrstvwxyz'
+    const consonantsLen = consonants.length
+    const vowels = 'aeiou'
+    const vowelsLen = vowels.length
+
+    const byteBuf = crypto.randomBytes(24) 
+    const randomSpaceIndex = (Math.floor(Math.random() * 4) * 2) + 8
+  
+    let output = ''
+
+    for (let a = 0; a < byteBuf.length; a+=2) {
+      let randomCons = consonants[byteBuf[a] % consonantsLen]
+      const randomVow = vowels[byteBuf[(a + 1)] % vowelsLen]
+      if (!a) {
+        randomCons = randomCons.toUpperCase()
+      } else if (a === randomSpaceIndex) {
+        output += ' '
+        randomCons = randomCons.toUpperCase()
+      }
+      output += randomCons
+      output += randomVow
+    }
+
+    return output
   }
 
   dataToVault() {
@@ -109,7 +146,8 @@ class SpiritClient extends Evt {
     if (this.data.username) this.vault.username = this.data.username
     if (this.data.contacts) this.vault.contacts = this.data.contacts
     if (!this.data.uuid) {
-      this.vault.uuid = uuidv4()
+      this.vault.uuid = this.generateHilariousRandomIdentifier()
+      this.setUuid(this.vault.uuid)
     }
   }
 
@@ -208,13 +246,19 @@ class SpiritClient extends Evt {
   }
 
   async connect() {
+    if (!this.data.uuid) throw Error('No uuid')
+
     if (this.webSocket) {
       this.webSocket.close()
     }
 
-    this.webSocket = new WebSocket('wss://localhost:54045')
+    this.webSocket = new WebSocket('ws://localhost:54045')
     this.webSocket.addEventListener('message', evt => {
-      console.log('ws', evt)
+      if (evt.data === 'connected') {
+        if (this.webSocket.readyState === WebSocket.OPEN) {
+          this.webSocket.send(`cli:${this.data.uuid}`)
+        }
+      }
     })
   }
 

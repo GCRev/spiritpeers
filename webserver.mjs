@@ -7,7 +7,7 @@ import {default as fs, promises as fsp} from 'fs'
 const app = Express()
 
 app.use(Parser.json())
-const wsI = ExpressWs(app).getWss()
+const wsi = ExpressWs(app).getWss()
 
 app.listen(process.env.PORT || 54045, () => { console.log(`started on ${process.env.PORT || 54045}`)})
 
@@ -15,18 +15,61 @@ const dirname = Path.resolve('.')
 const contact_requests_path = `${dirname}/cache/contact_requests`
 const cache = new Map()
 
+/* this a bimap, and it's the only way */
+const cli_cache = new Map()
+const uuid_cache = new Map()
+
 async function checkCache() {
 
 }
 
 app.ws('/', ws => {
+  ws.isAlive = true
   ws.send('connected')
+  ws.on('pong', wsHeartbeat)
   ws.on('message', async msg => {
+    const data = msg.split(':')[1]
     if (msg.startsWith('dat')) {
       ws.send('test')
+    } else if (msg.startsWith('cli')) {
+      cli_cache.set(ws, data)
+      uuid_cache.set(data, ws)
+    } else if (msg.startsWith('con')) {
+      const client = uuid_cache.get(data)
+      if (client) {
+        client.send(msg)
+      }
     }
   })
+  ws.on('close', () => {
+    const uuid = cli_cache.get(ws)
+    cli_cache.delete(ws)
+    if (uuid) uuid_cache.delete(uuid)
+  })
 })
+
+function noop() {}
+
+function wsHeartbeat() {
+  this.isAlive = true
+}
+
+function groomWss() {
+  for(const client of wsi.clients) {
+    if (!client.isAlive) {
+      client.terminate()
+      const uuid = cli_cache.get(client)
+      cli_cache.delete(client)
+      if (uuid) uuid_cache.delete(uuid)
+      break
+    }
+    client.isAlive = false
+    client.ping(noop)
+  }
+  setTimeout(groomWss, 30000)
+}
+
+groomWss()
 
 app.get('/', (req, res)=> {
   res.sendFile(`${dirname}/web/index.html`)
@@ -112,13 +155,23 @@ app.post('/talkto', (req, res) => {
     req.body.availablePorts) {
     const forwardKey = `${req.body.source}-${req.body.target}`
     const reverseKey = `${req.body.target}-${req.body.source}`
+
+    /* check the client cache for an online client matching the 'target' */
+    if (uuid_cache.has(req.body.target)) {
+      const client = uuid_cache.get(req.body.target)
+      if (client) {
+        client.send(`req:${req.body.source}`)
+      }
+    }
+
     if (cache.has(reverseKey)) {
-      // handle the case where there is already a request from another peer to this peer
+      /* handle the case where there is already a request from another peer to this peer */
       cache.delete(reverseKey)
+
       res.json({ 
         success: true,
         status: 'accept_response',
-        message: `Request sent from: ${req.body.source}`
+        message: `Request sent from: ${req.body.target}`
       })
     } else if (!cache.has(forwardKey)) {
       cache.set(forwardKey, {
