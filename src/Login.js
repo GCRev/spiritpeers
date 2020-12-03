@@ -7,10 +7,7 @@ class LoginDisplay extends React.Component {
     super()
     this.data = data
     this.state = {
-      signUp: !data.spiritClient.data.foundResourceFile,
-      emailValid: data.spiritClient.validateEmail(),
-      usernameValid: data.spiritClient.validateUsername(),
-      passwordValid: data.spiritClient.validatePassword()
+      signUp: !data.spiritClient.data.foundResourceFile
     }
     this.logonHandler = this.logonHandler.bind(this)
     this.updateFromPrompt = this.updateFromPrompt.bind(this)
@@ -19,19 +16,19 @@ class LoginDisplay extends React.Component {
   logonHandler() {
     this.props.spiritClient.logon(this.state.username, this.state.password, this.state.email)
   }
-  
+
   updateFromPrompt(propName, value) {
     /* this is cheating */
-    this.setState({[propName]: value})
+    this.setState({ [propName]: value })
 
-    if (propName.startsWith('password')) {
-      const password = propName === 'password' ? value : this.state.password
-      const password_confirm = propName === 'password_confirm' ? value : this.state.password_confirm
-      this.setState({passwordValid: this.props.spiritClient.validatePassword(password, password_confirm), logonValid: []})
+    if (propName === 'password_confirm') {
+      this.setState({ passwordConfirmValid: this.props.spiritClient.validatePasswordConfirm(this.state.password, value), logonValid: [] })
+    } else if (propName === 'password') {
+      this.setState({ passwordValid: this.props.spiritClient.validatePassword(value), logonValid: [] })
     } else if (propName === 'username') {
-      this.setState({usernameValid: this.props.spiritClient.validateUsername(value), logonValid: []})
+      this.setState({ usernameValid: this.props.spiritClient.validateUsername(value), logonValid: [] })
     } else if (propName === 'email') {
-      this.setState({emailValid: this.props.spiritClient.validateEmail(value)})
+      this.setState({ emailValid: this.props.spiritClient.validateEmail(value) })
     }
   }
 
@@ -61,10 +58,10 @@ class LoginDisplay extends React.Component {
     return (
       <div className="form-panel">
         <PromptsDisplay handleChange={this.updateFromPrompt} label="Username" propName="username" type="text"></PromptsDisplay>
-        <PromptsDisplay 
-          handleChange={this.updateFromPrompt} 
-          label="Password" 
-          propName="password" 
+        <PromptsDisplay
+          handleChange={this.updateFromPrompt}
+          label="Password"
+          propName="password"
           type="password"
           invalidReasons={this.state.logonValid}></PromptsDisplay>
         <button className="form-button login-button" onClick={this.logonHandler}>LAUNCH</button>
@@ -74,31 +71,38 @@ class LoginDisplay extends React.Component {
 
 
   renderSignUp() {
-    const allValid = !(this.state.passwordValid || []).length &&
-                     !(this.state.usernameValid || []).length &&
-                     !(this.state.emailValid || []).length
+    const allValid =
+      !(this.state.passwordValid || []).length &&
+      !(this.state.passwordConfirmValid || []).length &&
+      !(this.state.usernameValid || []).length &&
+      !(this.state.emailValid || []).length
     const className = `form-button login-button ${allValid ? '' : 'disabled'}`
     return (
       <div className="form-panel">
-        <PromptsDisplay 
-          handleChange={this.updateFromPrompt} 
+        <PromptsDisplay
+          handleChange={this.updateFromPrompt}
           label="Email"
           propName="email"
           type="email"
           invalidReasons={this.state.emailValid}></PromptsDisplay>
-        <PromptsDisplay 
+        <PromptsDisplay
           handleChange={this.updateFromPrompt}
           label="Username"
-          propName="username" 
+          propName="username"
           type="text"
           invalidReasons={this.state.usernameValid}></PromptsDisplay>
-        <PromptsDisplay handleChange={this.updateFromPrompt} label="Password" propName="password" type="password"></PromptsDisplay>
-        <PromptsDisplay 
-          handleChange={this.updateFromPrompt} 
-          label="Confirm Password" 
-          propName="password_confirm" 
-          type="password" 
+        <PromptsDisplay
+          handleChange={this.updateFromPrompt}
+          label="Password"
+          propName="password"
+          type="password"
           invalidReasons={this.state.passwordValid}></PromptsDisplay>
+        <PromptsDisplay
+          handleChange={this.updateFromPrompt}
+          label="Confirm Password"
+          propName="password_confirm"
+          type="password"
+          invalidReasons={this.state.passwordConfirmValid}></PromptsDisplay>
         <button className={className} onClick={this.logonHandler}>LAUNCH</button>
       </div>
     )
@@ -107,7 +111,7 @@ class LoginDisplay extends React.Component {
   render() {
     return (
       <div id="login-container" className="flex-center">
-        {this.state.signUp ? this.renderSignUp() : this.renderLogin() }
+        {this.state.signUp ? this.renderSignUp() : this.renderLogin()}
       </div>
     )
   }
@@ -137,10 +141,10 @@ class PromptsDisplay extends React.Component {
           </dt>
           {!!(this.props.invalidReasons || []).length &&
             <dd className="invalid-reasons">
-            {this.props.invalidReasons.map((reason, index) => {
-              return <p key={index}>{reason}</p>
-            })
-            }
+              {this.props.invalidReasons.map((reason, index) => {
+                return <p key={index}>{reason}</p>
+              })
+              }
             </dd>
           }
         </dl>

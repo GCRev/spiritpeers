@@ -87,11 +87,7 @@ class SpiritClient extends Evt {
     return reasons
   }
 
-  validatePassword(password, confirmPassword) {
-    if (!password || !confirmPassword) return ['Password must not be blank']
-
-    if (password !== confirmPassword) return ['Password and confirmation do not match']
-
+  validatePassword(password) {
     const reasons = []
     if (password.length < 8) reasons.push('Password must be longer than 8 characters')
     if (!/\d/g.test(password)) reasons.push('Password must container at least 1 number')
@@ -99,6 +95,12 @@ class SpiritClient extends Evt {
     if (password.length > 32) reasons.push("Come on now, we're not writing an essay here")
 
     return reasons
+  }
+
+  validatePasswordConfirm(password, confirmPassword) {
+    if (!password || !confirmPassword) return ['Password must not be blank']
+
+    if (password !== confirmPassword) return ['Password and confirmation do not match']
   }
 
   vaultToData() {

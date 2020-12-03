@@ -1,7 +1,7 @@
-const {app, ipcMain, BrowserWindow} = require('electron')
-const path =  require('path')
+const { app, ipcMain, BrowserWindow } = require('electron')
+const path = require('path')
 const isDev = require('electron-is-dev')
-const EnvPaths = require('env-paths')('SpiritPeers', {suffix: ''})
+const EnvPaths = require('env-paths')('SpiritPeers', { suffix: '' })
 
 // app.allowRendererProcessReuse = false
 app.commandLine.appendSwitch('enable-webgl2-compute-context')
@@ -12,11 +12,14 @@ const createWindow = () => {
   const mainWindow = new BrowserWindow({
     width: 1550,
     height: 750,
+    minHeight: 400,
+    minWidth: 700,
     webPreferences: {
       enableRemoteModule: true,
       nodeIntegration: true,
       allowRunningInsecureContent: false
-    }
+    },
+    icon: `${__dirname}/public/favicon.ico`
   })
 
   mainWindow.removeMenu()
@@ -29,7 +32,6 @@ const createWindow = () => {
   const bounds = mainWindow.getBounds()
   // bounds.x = -2342 // do not hardcode
   mainWindow.setBounds(bounds)
-
 }
 
 // This method will be called when Electron has finished
