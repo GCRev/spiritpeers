@@ -19,10 +19,6 @@ const cache = new Map()
 const cli_cache = new Map()
 const uuid_cache = new Map()
 
-async function checkCache() {
-
-}
-
 app.ws('/', ws => {
   ws.isAlive = true
   ws.send('connected')
@@ -204,6 +200,14 @@ app.post('/talkto', (req, res) => {
   }
 })
 
+app.get('/clients', (req, res) => {
+  res.json({count: cli_cache.size})
+})
+
 app.get('/info', (req, res) => {
   res.json({ip: req.headers['x-forwarded-for'] || req.connection.remoteAddress})
+})
+
+app.get('/*', (request, response) => {
+  response.sendFile(`${dirname}/web/${request.params['0']}`)
 })
