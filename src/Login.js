@@ -17,6 +17,12 @@ class LoginDisplay extends React.Component {
     this.props.spiritClient.logon(this.state.username, this.state.password, this.state.email)
   }
 
+  enterKeyLogonHandler(e) {
+    if (e.key === 'Enter') {
+      this.logonHandler()
+    }
+  }
+
   updateFromPrompt(propName, value) {
     /* this is cheating */
     this.setState({ [propName]: value })
@@ -57,9 +63,15 @@ class LoginDisplay extends React.Component {
   renderLogin() {
     return (
       <div className="form-panel">
-        <PromptsDisplay handleChange={this.updateFromPrompt} label="Username" propName="username" type="text"></PromptsDisplay>
         <PromptsDisplay
           handleChange={this.updateFromPrompt}
+          handleKeyUp={this.enterKeyLogonHandler}
+          label="Username"
+          propName="username"
+          type="text"></PromptsDisplay>
+        <PromptsDisplay
+          handleChange={this.updateFromPrompt}
+          handleKeyUp={this.enterKeyLogonHandler}
           label="Password"
           propName="password"
           type="password"
@@ -81,24 +93,28 @@ class LoginDisplay extends React.Component {
       <div className="form-panel">
         <PromptsDisplay
           handleChange={this.updateFromPrompt}
+          handleKeyUp={this.enterKeyLogonHandler}
           label="Email"
           propName="email"
           type="email"
           invalidReasons={this.state.emailValid}></PromptsDisplay>
         <PromptsDisplay
           handleChange={this.updateFromPrompt}
+          handleKeyUp={this.enterKeyLogonHandler}
           label="Username"
           propName="username"
           type="text"
           invalidReasons={this.state.usernameValid}></PromptsDisplay>
         <PromptsDisplay
           handleChange={this.updateFromPrompt}
+          handleKeyUp={this.enterKeyLogonHandler}
           label="Password"
           propName="password"
           type="password"
           invalidReasons={this.state.passwordValid}></PromptsDisplay>
         <PromptsDisplay
           handleChange={this.updateFromPrompt}
+          handleKeyUp={this.enterKeyLogonHandler}
           label="Confirm Password"
           propName="password_confirm"
           type="password"
@@ -137,7 +153,11 @@ class PromptsDisplay extends React.Component {
             <label className="form-label">{this.props.label}</label>
           </dt>
           <dt>
-            <input className="form-input" type={this.props.type} onChange={this.handleChange}></input>
+            <input 
+              className="form-input" 
+              type={this.props.type} 
+              onChange={this.handleChange}
+              onKeyUp={this.props.handleKeyUp}></input>
           </dt>
           {!!(this.props.invalidReasons || []).length &&
             <dd className="invalid-reasons">
