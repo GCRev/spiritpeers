@@ -1,4 +1,4 @@
-const {app, ipcMain, BrowserWindow} = require('electron')
+const { app, ipcMain, BrowserWindow, net } = require('electron')
 const path =  require('path')
 const isDev = require('electron-is-dev')
 const EnvPaths = require('env-paths')('SpiritPeers', {suffix: ''})
@@ -70,4 +70,31 @@ ipcMain.handle('get-env-path', (evt, type) => {
       temp: EnvPaths.temp
     }
   }
+})
+
+ipcMain.handle('talk-to', (evt, args) => {
+  return new Promise(resolve => {
+    const { url, source, target, availablePorts } = args
+    const sendBuffer = Buffer.from(JSON.stringify({
+      source: source,
+      target: target,
+      availablePorts: availablePorts
+    }), 'utf-8')
+    const req = net.request({
+      method: 'POST',
+      url: url
+    })
+    req.setHeader('Content-Type', 'application/json')
+    req.on('response', response => {
+      let buffer = ''
+      response.on('data', chunk => {
+        buffer += chunk.toString()
+      })
+      response.on('end', () => {
+        resolve(JSON.parse(buffer))
+      })
+    })
+    req.write(sendBuffer)
+    req.end()
+  })
 })

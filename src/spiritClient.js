@@ -9,6 +9,8 @@ const path = window.require('path')
 const {pipeline, finished, Readable, Writable} = window.require('stream')
 const {StringDecoder} = window.require('string_decoder')
 
+const SERVER_URL = 'node.one:80'
+
 class SpiritClient extends Evt { 
   constructor() {
     super()
@@ -235,7 +237,7 @@ class SpiritClient extends Evt {
 
         writeStream.write(iv, () => {
           const readFromBuffer = new Readable()
-          readFromBuffer.push(new Buffer(JSON.stringify(this.vault), 'utf8'))
+          readFromBuffer.push(Buffer.from(JSON.stringify(this.vault), 'utf8'))
           readFromBuffer.push(null)
           pipeline([readFromBuffer, cipher, writeStream], () => {
             resolve()
@@ -252,7 +254,7 @@ class SpiritClient extends Evt {
       this.webSocket.close()
     }
 
-    this.webSocket = new WebSocket('ws://localhost:54045')
+    this.webSocket = new WebSocket(`ws://${SERVER_URL}`)
     this.webSocket.addEventListener('message', evt => {
       if (evt.data === 'connected') {
         if (this.webSocket.readyState === WebSocket.OPEN) {
@@ -260,6 +262,18 @@ class SpiritClient extends Evt {
         }
       }
     })
+  }
+
+  async talkTo(target, ports) {
+    if (!this.data.uuid) return 
+    const result = await ipcr.invoke('talk-to', {
+      url: `http://${SERVER_URL}/talkto`,
+      source: this.data.uuid,
+      target: target,
+      availablePorts: [80, 443]
+    })
+    console.log(result)
+    return result
   }
 
   async logon(username, password, email) {

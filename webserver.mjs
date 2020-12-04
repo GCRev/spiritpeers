@@ -146,6 +146,7 @@ async function checkForCache() {
 checkForCache()
 
 app.post('/talkto', (req, res) => {
+  console.log(req.body)
   if (req.body.source && 
     req.body.target &&
     req.body.availablePorts) {
@@ -163,6 +164,7 @@ app.post('/talkto', (req, res) => {
     if (cache.has(reverseKey)) {
       /* handle the case where there is already a request from another peer to this peer */
       cache.delete(reverseKey)
+      cache.delete(forwardKey)
 
       res.json({ 
         success: true,
