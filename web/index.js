@@ -12,12 +12,12 @@ function heartbeat() {
     try {
       const rjson = JSON.parse(req.response)
       ind.innerText = rjson.count
+      setTimeout(heartbeat, 5000)
     } catch (err) {
       /* do nothing */
     }
   })
   req.send()
-  setTimeout(heartbeat, 5000)
 }
 
 heartbeat()
