@@ -24,17 +24,33 @@ app.ws('/', ws => {
   ws.send('connected')
   ws.on('pong', wsHeartbeat)
   ws.on('message', async msg => {
-    const data = msg.split(':')[1]
-    if (msg.startsWith('dat')) {
-      ws.send('test')
-    } else if (msg.startsWith('cli')) {
-      cli_cache.set(ws, data)
-      uuid_cache.set(data, ws)
-    } else if (msg.startsWith('con')) {
-      const client = uuid_cache.get(data)
-      if (client) {
-        client.send(msg)
-      }
+    const prefix = msg.split(':')[0]
+    const data = msg.slice(prefix.length + 1)
+    switch (prefix) {
+      case 'dat':
+	ws.send('test')
+	break
+      case 'cli':
+	cli_cache.set(ws, data)
+	uuid_cache.set(data, ws)
+	break
+      case 'con':
+	{
+	  const targetClient = uuid_cache.get(data)
+	  if (targetClient) {
+	    targetClient.send(msg)
+	  }
+	  break
+	}
+      case 'msg':
+	{
+	  const msgJson = JSON.parse(data)
+	  const targetClient = uuid_cache.get(msgJson.target)
+	  if (targetClient) {
+	    targetClient.send(msg)
+	  }
+	  break
+	}
     }
   })
   ws.on('close', () => {
@@ -77,6 +93,10 @@ app.get('/src/*', (request, response) => {
 
 app.get('/public/*', (request, response) => {
   response.sendFile(`${dirname}/public/${request.params['0']}`)
+})
+
+app.get('/favicon.ico', (request, response) => {
+  response.sendFile(`${dirname}/public/favicon.ico`)
 })
 
 async function loadCache() {
@@ -155,9 +175,9 @@ app.post('/talkto', (req, res) => {
 
     /* check the client cache for an online client matching the 'target' */
     if (uuid_cache.has(req.body.target)) {
-      const client = uuid_cache.get(req.body.target)
-      if (client) {
-        client.send(`req:${req.body.source}`)
+      const targetClient = uuid_cache.get(req.body.target)
+      if (targetClient) {
+        targetClient.send(`req:${req.body.source}`)
       }
     }
 
