@@ -144,6 +144,17 @@ class SpiritClient extends Evt {
     return output
   }
 
+  getContact(uuid) {
+    let result = {}
+    if (!(uuid in this.data.contacts)) {
+      this.data.contacts[uuid] = result
+      this.fire('create-contact', result)
+    } else {
+      result = this.data.contacts[uuid]
+    }
+    return result
+  }
+
   dataToVault() {
     this.vault.hash = this.data.hash.toString('hex')
     if (this.data.email) this.vault.email = this.data.email
@@ -252,17 +263,31 @@ class SpiritClient extends Evt {
   async connect() {
     if (!this.data.uuid) throw Error('No uuid')
 
-    if (this.webSocket) {
-      this.webSocket.close()
-    }
-
-    this.webSocket = new WebSocket(`ws://${SERVER_URL}`)
-    this.webSocket.addEventListener('message', evt => {
-      if (evt.data === 'connected') {
-        if (this.webSocket.readyState === WebSocket.OPEN) {
-          this.webSocket.send(`cli:${this.data.uuid}`)
-        }
+    return new Promise(resolve => {
+      if (this.webSocket) {
+        this.webSocket.close()
       }
+
+      this.webSocket = new WebSocket(`ws://${SERVER_URL}`)
+      this.webSocket.addEventListener('message', evt => {
+        if (evt.data === 'connected') {
+          if (this.webSocket.readyState === WebSocket.OPEN) {
+            this.webSocket.send(`cli:${this.data.uuid}`)
+            resolve()
+          }
+        } else {
+          const prefix = evt.data.split(':')[0]
+          const data = evt.data.slice(prefix.length + 1)
+          switch (prefix) {
+          case 'msg':
+            {
+              const msgJson = JSON.parse(data)
+              console.log(msgJson)
+              break
+            }
+          }
+        }
+      })
     })
   }
 
@@ -276,6 +301,24 @@ class SpiritClient extends Evt {
     })
     console.log(result)
     return result
+  }
+
+  async message(target, md) {
+      if (!this.webSocket || 
+        (this.webSocket && this.webSocket.readyState !== WebSocket.OPEN)) {
+        await this.connect()
+      }
+
+    return new Promise(resolve => {
+      if (this.webSocket && 
+        this.webSocket.readyState === WebSocket.OPEN) {
+        this.webSocket.send('msg:' + JSON.stringify({
+          target: target,
+          md: md
+        }))
+        resolve()
+      }
+    })
   }
 
   async logon(username, password, email) {

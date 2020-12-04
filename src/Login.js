@@ -10,6 +10,7 @@ class LoginDisplay extends React.Component {
       signUp: !data.spiritClient.data.foundResourceFile
     }
     this.logonHandler = this.logonHandler.bind(this)
+    this.fieldKeyupHandler = this.fieldKeyupHandler.bind(this)
     this.updateFromPrompt = this.updateFromPrompt.bind(this)
   }
 
@@ -17,7 +18,7 @@ class LoginDisplay extends React.Component {
     this.props.spiritClient.logon(this.state.username, this.state.password, this.state.email)
   }
 
-  enterKeyLogonHandler(e) {
+  fieldKeyupHandler(e) {
     if (e.key === 'Enter') {
       this.logonHandler()
     }
@@ -65,13 +66,13 @@ class LoginDisplay extends React.Component {
       <div className="form-panel">
         <PromptsDisplay
           handleChange={this.updateFromPrompt}
-          handleKeyUp={this.enterKeyLogonHandler}
+          handleKeyUp={this.fieldKeyupHandler}
           label="Username"
           propName="username"
           type="text"></PromptsDisplay>
         <PromptsDisplay
           handleChange={this.updateFromPrompt}
-          handleKeyUp={this.enterKeyLogonHandler}
+          handleKeyUp={this.fieldKeyupHandler}
           label="Password"
           propName="password"
           type="password"
@@ -93,28 +94,28 @@ class LoginDisplay extends React.Component {
       <div className="form-panel">
         <PromptsDisplay
           handleChange={this.updateFromPrompt}
-          handleKeyUp={this.enterKeyLogonHandler}
+          handleKeyUp={this.fieldKeyupHandler}
           label="Email"
           propName="email"
           type="email"
           invalidReasons={this.state.emailValid}></PromptsDisplay>
         <PromptsDisplay
           handleChange={this.updateFromPrompt}
-          handleKeyUp={this.enterKeyLogonHandler}
+          handleKeyUp={this.fieldKeyupHandler}
           label="Username"
           propName="username"
           type="text"
           invalidReasons={this.state.usernameValid}></PromptsDisplay>
         <PromptsDisplay
           handleChange={this.updateFromPrompt}
-          handleKeyUp={this.enterKeyLogonHandler}
+          handleKeyUp={this.fieldKeyupHandler}
           label="Password"
           propName="password"
           type="password"
           invalidReasons={this.state.passwordValid}></PromptsDisplay>
         <PromptsDisplay
           handleChange={this.updateFromPrompt}
-          handleKeyUp={this.enterKeyLogonHandler}
+          handleKeyUp={this.fieldKeyupHandler}
           label="Confirm Password"
           propName="password_confirm"
           type="password"
