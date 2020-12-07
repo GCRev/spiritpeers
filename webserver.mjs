@@ -24,33 +24,49 @@ app.ws('/', ws => {
   ws.send('connected')
   ws.on('pong', wsHeartbeat)
   ws.on('message', async msg => {
-    const prefix = msg.split(':')[0]
-    const data = msg.slice(prefix.length + 1)
-    switch (prefix) {
+    if (typeof msg === 'string') {
+      const prefix = msg.split(':')[0]
+      const data = msg.slice(prefix.length + 1)
+      switch (prefix) {
       case 'dat':
-	ws.send('test')
-	break
+        ws.send('test')
+        break
       case 'cli':
-	cli_cache.set(ws, data)
-	uuid_cache.set(data, ws)
-	break
+        cli_cache.set(ws, data)
+        uuid_cache.set(data, ws)
+        break
       case 'con':
-	{
-	  const targetClient = uuid_cache.get(data)
-	  if (targetClient) {
-	    targetClient.send(msg)
-	  }
-	  break
-	}
+        {
+          const targetClient = uuid_cache.get(data)
+          if (targetClient) {
+            targetClient.send(msg)
+          }
+          break
+        }
       case 'msg':
-	{
-	  const msgJson = JSON.parse(data)
-	  const targetClient = uuid_cache.get(msgJson.target)
-	  if (targetClient) {
-	    targetClient.send(msg)
-	  }
-	  break
-	}
+        {
+          const msgJson = JSON.parse(data)
+          const targetClient = uuid_cache.get(msgJson.target)
+          if (targetClient) {
+            targetClient.send(msg)
+          }
+          break
+        }
+      default:
+        break
+      }
+    } else if (msg instanceof Buffer) {
+      const messagePrefix = Buffer.from('msg:', 'utf8')
+      if (messagePrefix.equals(msg.slice(0, messagePrefix.length))) {
+        const dataBuffer = msg.slice(messagePrefix.length)
+
+        /* the first 25 bytes is the source uuid */
+        const targetClientUuid = dataBuffer.slice(25, 50).toString('utf8')
+        const targetClient = uuid_cache.get(targetClientUuid)
+        if (targetClient) {
+          targetClient.send(msg)
+        }
+      }
     }
   })
   ws.on('close', () => {
@@ -166,35 +182,47 @@ async function checkForCache() {
 checkForCache()
 
 app.post('/talkto', (req, res) => {
-  console.log(req.body)
   if (req.body.source && 
     req.body.target &&
+    req.body.publicKey &&
     req.body.availablePorts) {
     const forwardKey = `${req.body.source}-${req.body.target}`
     const reverseKey = `${req.body.target}-${req.body.source}`
 
-    /* check the client cache for an online client matching the 'target' */
+    /* 
+     * check the client cache for an online client matching the 'target' 
+     *
+     * this will notify the target that a conversation is requested.
+     * the target still has to respond by submitting their own 'talk-to'
+     * request. This is the only way to exchange public keys
+     *
+     */
     if (uuid_cache.has(req.body.target)) {
       const targetClient = uuid_cache.get(req.body.target)
       if (targetClient) {
-        targetClient.send(`req:${req.body.source}`)
+        targetClient.send(`req:${req.body.source}|${req.body.publicKey}`)
       }
     }
 
     if (cache.has(reverseKey)) {
-      /* handle the case where there is already a request from another peer to this peer */
-      cache.delete(reverseKey)
-      cache.delete(forwardKey)
+      const reverseRequest = cache.get(reverseKey)
 
+      /* handle the case where there is already a request from another peer to this peer */
       res.json({ 
         success: true,
         status: 'accept_response',
-        message: `Request sent from: ${req.body.target}`
+        message: `Request sent from: ${req.body.target}`,
+        publicKey: reverseRequest.publicKey
       })
+
+      cache.delete(reverseKey)
+      cache.delete(forwardKey) /* this shouldn't really be necessary */
+
     } else if (!cache.has(forwardKey)) {
       cache.set(forwardKey, {
         fromPeerUDID: req.body.source,
         toPeerUDID: req.body.target,
+        publicKey: req.body.publicKey,
         availablePorts: req.body.availablePorts
       })
       res.json({ 
@@ -213,6 +241,7 @@ app.post('/talkto', (req, res) => {
     const missingParams = []
     if (!req.body.source) missingParams.push('Source UDID')
     if (!req.body.target) missingParams.push('Target UDID')
+    if (!req.body.publicKey) missingParams.push('Public Key')
     if (!req.body.availablePorts) missingParams.push('Available Ports')
     res.json({
       success: false,
@@ -224,6 +253,14 @@ app.post('/talkto', (req, res) => {
 
 app.get('/clients', (req, res) => {
   res.json({count: cli_cache.size})
+})
+
+app.get('/cache', (req, res) => {
+  const result = {}
+  for (const entry of cache.entries()) {
+    result[entry[0]] = Object.assign({}, entry[1])
+  }
+  res.json(result)
 })
 
 app.get('/info', (req, res) => {

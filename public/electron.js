@@ -76,12 +76,8 @@ ipcMain.handle('get-env-path', (evt, type) => {
 
 ipcMain.handle('talk-to', (evt, args) => {
   return new Promise(resolve => {
-    const { url, source, target, availablePorts } = args
-    const sendBuffer = Buffer.from(JSON.stringify({
-      source: source,
-      target: target,
-      availablePorts: availablePorts
-    }), 'utf-8')
+    const { url, params } = args
+    const sendBuffer = Buffer.from(JSON.stringify(params), 'utf-8')
     const req = net.request({
       method: 'POST',
       url: url

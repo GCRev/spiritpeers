@@ -10,6 +10,8 @@ const {pipeline, finished, Readable, Writable} = window.require('stream')
 const {StringDecoder} = window.require('string_decoder')
 
 const SERVER_URL = 'node.one:80'
+const ECDH_CURVE = 'secp521r1'
+const UUID_LEN = 25
 
 class SpiritClient extends Evt { 
   constructor() {
@@ -109,7 +111,20 @@ class SpiritClient extends Evt {
     if (this.vault.hash) this.setHash(this.vault.hash)
     if (this.vault.username) this.setUsername(this.vault.username)
     if (this.vault.email) this.setEmail(this.vault.email)
-    if (this.vault.contacts) this.setContacts(this.vault.contacts)
+    if (this.vault.contacts) {
+      const result = {}
+      for (const contactUuid in this.vault.contacts) {
+        const contact = this.vault.contacts[contactUuid]
+        result.privateKey = Buffer.from(contact.privateKey, 'base64')
+        if (contact.publicKey) result.publicKey = Buffer.from(contact.publicKey, 'base64')
+
+        const secret = crypto.createECDH(ECDH_CURVE)
+        secret.setPrivateKey(result.privateKey)
+        result.secret = secret
+
+        this.data.contacts[contactUuid] = result 
+      }
+    }
     if (this.vault.uuid) this.setUuid(this.vault.uuid)
   }
 
@@ -123,7 +138,7 @@ class SpiritClient extends Evt {
     const vowels = 'aeiou'
     const vowelsLen = vowels.length
 
-    const byteBuf = crypto.randomBytes(24) 
+    const byteBuf = crypto.randomBytes(UUID_LEN - 1) 
     const randomSpaceIndex = (Math.floor(Math.random() * 4) * 2) + 8
   
     let output = ''
@@ -146,12 +161,29 @@ class SpiritClient extends Evt {
 
   getContact(uuid) {
     let result = {}
+    const secret = crypto.createECDH(ECDH_CURVE)
+
     if (!(uuid in this.data.contacts)) {
+      secret.generateKeys()
+      result.privateKey = secret.getPrivateKey()
+      result.uuid = uuid
+      result.secret = secret
       this.data.contacts[uuid] = result
       this.fire('create-contact', result)
     } else {
       result = this.data.contacts[uuid]
     }
+
+    if (!result.secret) {
+      secret.setPrivateKey(result.privateKey)
+      result.secret = secret
+    }
+
+    /* cache the sharedSecret if required data are present */
+    if (result.privateKey && result.publicKey && ! result.sharedSecret) {
+      result.sharedSecret = result.secret.computeSecret(result.publicKey)
+    }
+
     return result
   }
 
@@ -159,7 +191,21 @@ class SpiritClient extends Evt {
     this.vault.hash = this.data.hash.toString('hex')
     if (this.data.email) this.vault.email = this.data.email
     if (this.data.username) this.vault.username = this.data.username
-    if (this.data.contacts) this.vault.contacts = this.data.contacts
+    if (this.data.contacts) {
+      this.vault.contacts = {}
+      for (const contactUuid in this.data.contacts) {
+        const contact = this.data.contacts[contactUuid]
+        const result = Object.assign({}, contact)
+
+        /* don't write these keys */
+        delete result.secret
+        delete result.sharedSecret
+
+        result.privateKey = contact.privateKey.toString('base64')
+        if (contact.publicKey) result.publicKey = contact.publicKey.toString('base64')
+        this.vault.contacts[contactUuid] = result 
+      }
+    }
     if (!this.data.uuid) {
       this.vault.uuid = this.generateHilariousRandomIdentifier()
       this.setUuid(this.vault.uuid)
@@ -269,22 +315,47 @@ class SpiritClient extends Evt {
       }
 
       this.webSocket = new WebSocket(`ws://${SERVER_URL}`)
-      this.webSocket.addEventListener('message', evt => {
+      this.webSocket.addEventListener('message', async evt => {
         if (evt.data === 'connected') {
           if (this.webSocket.readyState === WebSocket.OPEN) {
             this.webSocket.send(`cli:${this.data.uuid}`)
             resolve()
           }
-        } else {
+        } else if (typeof evt.data === 'string') {
           const prefix = evt.data.split(':')[0]
           const data = evt.data.slice(prefix.length + 1)
           switch (prefix) {
-          case 'msg':
+          case 'req':
             {
-              const msgJson = JSON.parse(data)
-              console.log(msgJson)
+              const dataSplit = data.split('|')
+              const targetContact = this.getContact(dataSplit[0])
+              targetContact.publicKey = Buffer.from(dataSplit[1], 'base64')
+              /* command ui to display a notification */
+              this.fire('conversation-request', targetContact)
               break
             }
+          default:
+            break
+          }
+        } else if (evt.data instanceof Blob) {
+          const rawData = Buffer.from(await evt.data.arrayBuffer())
+          const messagePrefix = Buffer.from('msg:', 'utf8')
+          if (messagePrefix.equals(rawData.slice(0, messagePrefix.length))) {
+            const dataBuffer = rawData.slice(messagePrefix.length)
+            const target = dataBuffer.slice(0, UUID_LEN).toString('utf8')
+
+            const contact = this.getContact(target)
+
+            if (!contact.sharedSecret) return
+
+            let md = ''
+            const iv = dataBuffer.slice(UUID_LEN + UUID_LEN, UUID_LEN + UUID_LEN + 16)
+            const encMessage = dataBuffer.slice(UUID_LEN + UUID_LEN + 16)
+            const decipher = crypto.createDecipheriv('aes-256-cbc', contact.sharedSecret.slice(0, 32), iv)
+            md += decipher.update(encMessage, null, 'utf8')
+            md += decipher.final('utf8') 
+            console.log(md)
+            this.fire('message-received', {contact: contact, md: md})
           }
         }
       })
@@ -293,31 +364,55 @@ class SpiritClient extends Evt {
 
   async talkTo(target, ports) {
     if (!this.data.uuid) return 
+    
+    const targetContact = this.getContact(target)
+
     const result = await ipcr.invoke('talk-to', {
       url: `http://${SERVER_URL}/talkto`,
-      source: this.data.uuid,
-      target: target,
-      availablePorts: [80, 443]
+      params: {
+        source: this.data.uuid,
+        target: target,
+        publicKey: targetContact.secret.getPublicKey().toString('base64'),
+        availablePorts: [80, 443]
+      }
     })
     console.log(result)
+
+    if (result.status === 'accept_response' && result.publicKey) {
+      /* this is the public key from the target's secretKey */
+      targetContact.publicKey = Buffer.from(result.publicKey, 'base64')
+    }
+
     return result
   }
 
   async message(target, md) {
-      if (!this.webSocket || 
-        (this.webSocket && this.webSocket.readyState !== WebSocket.OPEN)) {
-        await this.connect()
-      }
+    const contact = this.getContact(target)
+    if (!contact.sharedSecret) throw Error('Keys have not been exchanged') 
+
+    if (!this.webSocket || 
+      (this.webSocket && this.webSocket.readyState !== WebSocket.OPEN)) {
+      await this.connect()
+    }
+
+    if (!contact.log) contact.log = []
+    contact.log.push(md)
 
     return new Promise(resolve => {
-      if (this.webSocket && 
-        this.webSocket.readyState === WebSocket.OPEN) {
-        this.webSocket.send('msg:' + JSON.stringify({
-          target: target,
-          md: md
-        }))
-        resolve()
-      }
+      crypto.randomFill(new Uint8Array(16), (err, iv) => {
+
+        const cipher = crypto.createCipheriv('aes-256-cbc', contact.sharedSecret.slice(0, 32), iv)
+
+        const prefixBuffer = Buffer.from('msg:' + this.data.uuid + target, 'utf8')
+        const cipheredBuffer = Buffer.from(cipher.update(md))
+        const finalCipheredBuffer = Buffer.from(cipher.final())
+
+        if (this.webSocket && 
+          this.webSocket.readyState === WebSocket.OPEN) {
+          this.webSocket.send(Buffer.concat([prefixBuffer, Buffer.from(iv), cipheredBuffer, finalCipheredBuffer]))
+          resolve()
+        }
+      })
     })
   }
 
@@ -349,6 +444,7 @@ class SpiritClient extends Evt {
         await this.loadVaultFile()
 
         this.fire('logon')
+        this.connect()
         return buffer
       } catch (err) {
         this.fire('logon-failure', err.message)
