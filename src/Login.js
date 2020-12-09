@@ -5,7 +5,6 @@ import React from 'react'
 class LoginDisplay extends React.Component {
   constructor(data) {
     super()
-    this.data = data
     this.state = {
       signUp: !data.spiritClient.data.foundResourceFile
     }

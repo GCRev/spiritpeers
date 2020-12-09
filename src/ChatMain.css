@@ -2,16 +2,61 @@
   display: flex;
   width: 100%;
   height: 100%;
+  display: grid;
+  grid-template: 1fr 48px / 264px 1fr;
 }
 
 #conversations {
-  width: 225px;
+  padding: 4px;
+  grid-area: 1 / 1 / 2 / 2;
 }
 
 #message-area {
-  flex: 3;
+  padding: 4px;
+  grid-area: 1 / 2 / 3 / 3;
+}
+
+#main-toolbar {
+  grid-area: 2 / 1 / 3 / 2;
 }
 
 .visual-test {
-  border: 3px solid red
+  border: 1px dashed var(--turq);
+}
+
+.contact-item {
+  background-color: var(--slt-grey);
+  border: 1px solid var(--turq);
+  padding: 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  position: relative;
+  transition: background-color 0.1s var(--ease-out);
+}
+
+.contact-item:hover {
+  background-color: rgba(var(--turq-s), 0.3);
+}
+
+.contact-item:hover::after {
+  content: "···";
+  display: block;
+  position: absolute;
+  top: 0;
+  right: 12px;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  color: var(--d-turq);
+  font-size: 32px;
+  transform: translate3d(0, -4px, 0);
+}
+
+.contact-item .title {
+  font-size: 16px;
+}
+
+.contact-item .info {
+  margin-left: 8px;
+  color: var(--grey);
 }

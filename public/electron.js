@@ -89,7 +89,14 @@ ipcMain.handle('talk-to', (evt, args) => {
         buffer += chunk.toString()
       })
       response.on('end', () => {
-        resolve(JSON.parse(buffer))
+        try {
+          resolve(JSON.parse(buffer))
+        } catch (err) {
+          resolve({
+            status: 'error',
+            message: `Unable to talk to "${params.target}"` 
+          })
+        }
       })
     })
     req.write(sendBuffer)

@@ -24,10 +24,14 @@ class SpiritClient extends Evt {
        * but it's not redux so literally no one will care
        */
       set: (obj, prop, value) => {
-        const oldval = obj[prop]
         obj[prop] = value
-        if (oldval !== value) {
+        if (typeof value === 'object') {
           this.fire(`set-${prop}`, value)
+        } else {
+          const oldval = obj[prop]
+          if (oldval !== value) {
+            this.fire(`set-${prop}`, value)
+          }
         }
         return true
       }
@@ -112,18 +116,20 @@ class SpiritClient extends Evt {
     if (this.vault.username) this.setUsername(this.vault.username)
     if (this.vault.email) this.setEmail(this.vault.email)
     if (this.vault.contacts) {
-      const result = {}
+      const newContacts = {}
       for (const contactUuid in this.vault.contacts) {
+        const newContact = {}
         const contact = this.vault.contacts[contactUuid]
-        result.privateKey = Buffer.from(contact.privateKey, 'base64')
-        if (contact.publicKey) result.publicKey = Buffer.from(contact.publicKey, 'base64')
+        newContact.privateKey = Buffer.from(contact.privateKey, 'base64')
+        if (contact.publicKey) newContact.publicKey = Buffer.from(contact.publicKey, 'base64')
 
         const secret = crypto.createECDH(ECDH_CURVE)
-        secret.setPrivateKey(result.privateKey)
-        result.secret = secret
+        secret.setPrivateKey(newContact.privateKey)
+        newContact.secret = secret
 
-        this.data.contacts[contactUuid] = result 
+        newContacts[contactUuid] = newContact 
       }
+      this.data.contacts = newContacts
     }
     if (this.vault.uuid) this.setUuid(this.vault.uuid)
   }
@@ -160,6 +166,8 @@ class SpiritClient extends Evt {
   }
 
   getContact(uuid) {
+    if (uuid === this.data.uuid) return 
+
     let result = {}
     const secret = crypto.createECDH(ECDH_CURVE)
 
@@ -187,12 +195,24 @@ class SpiritClient extends Evt {
     return result
   }
 
+  getContactList() {
+    const result = []
+
+    if (this.data.contacts) {
+      for (const uuid in this.data.contacts) {
+        result.push(this.data.contacts[uuid])
+      }
+    }
+
+    return result
+  }
+
   dataToVault() {
     this.vault.hash = this.data.hash.toString('hex')
     if (this.data.email) this.vault.email = this.data.email
     if (this.data.username) this.vault.username = this.data.username
     if (this.data.contacts) {
-      this.vault.contacts = {}
+      const newContacts = {}
       for (const contactUuid in this.data.contacts) {
         const contact = this.data.contacts[contactUuid]
         const result = Object.assign({}, contact)
@@ -203,8 +223,9 @@ class SpiritClient extends Evt {
 
         result.privateKey = contact.privateKey.toString('base64')
         if (contact.publicKey) result.publicKey = contact.publicKey.toString('base64')
-        this.vault.contacts[contactUuid] = result 
+        newContacts[contactUuid] = result 
       }
+      this.vault.contacts = newContacts
     }
     if (!this.data.uuid) {
       this.vault.uuid = this.generateHilariousRandomIdentifier()
@@ -340,26 +361,53 @@ class SpiritClient extends Evt {
         } else if (evt.data instanceof Blob) {
           const rawData = Buffer.from(await evt.data.arrayBuffer())
           const messagePrefix = Buffer.from('msg:', 'utf8')
+          const infoPrefix = Buffer.from('info:', 'utf8')
+          let handler = this.parseMessageReceived
+          let dataBuffer, target, contact
           if (messagePrefix.equals(rawData.slice(0, messagePrefix.length))) {
-            const dataBuffer = rawData.slice(messagePrefix.length)
-            const target = dataBuffer.slice(0, UUID_LEN).toString('utf8')
-
-            const contact = this.getContact(target)
-
-            if (!contact.sharedSecret) return
-
-            let md = ''
-            const iv = dataBuffer.slice(UUID_LEN + UUID_LEN, UUID_LEN + UUID_LEN + 16)
-            const encMessage = dataBuffer.slice(UUID_LEN + UUID_LEN + 16)
-            const decipher = crypto.createDecipheriv('aes-256-cbc', contact.sharedSecret.slice(0, 32), iv)
-            md += decipher.update(encMessage, null, 'utf8')
-            md += decipher.final('utf8') 
-            console.log(md)
-            this.fire('message-received', {contact: contact, md: md})
+            dataBuffer = rawData.slice(messagePrefix.length)
+          } else if (infoPrefix.equals(rawData.slice(0, infoPrefix.length))) {
+            dataBuffer = rawData.slice(infoPrefix.length)
+            handler = this.parseInfoReceived
           }
+
+          if (!dataBuffer) return
+
+          target = dataBuffer.slice(0, UUID_LEN).toString('utf8')
+
+          if (!target) return
+
+          contact = this.getContact(target)
+
+          if (!contact) return 
+          if (!contact.sharedSecret) return
+
+          let md = ''
+          const iv = dataBuffer.slice(UUID_LEN + UUID_LEN, UUID_LEN + UUID_LEN + 16)
+          const encMessage = dataBuffer.slice(UUID_LEN + UUID_LEN + 16)
+          const decipher = crypto.createDecipheriv('aes-256-cbc', contact.sharedSecret.slice(0, 32), iv)
+          md += decipher.update(encMessage, null, 'utf8')
+          md += decipher.final('utf8') 
+          console.log(md)
+          handler({contact: Object.assign({}, contact), data: md})
+          return 
         }
       })
     })
+  }
+
+  parseMessageReceived(contact, md) {
+    this.fire('message-received', {contact: contact, md: md})
+  }
+
+  parseInfoReceived(contact, info) {
+    try {
+      const rjson = JSON.parse(info)
+      Object.assign(contact, rjson)
+      this.fire('info-received', {contact: contact, info: rjson})
+    } catch (err) {
+      /* do nothing */
+    }
   }
 
   async talkTo(target, ports) {
@@ -381,12 +429,26 @@ class SpiritClient extends Evt {
     if (result.status === 'accept_response' && result.publicKey) {
       /* this is the public key from the target's secretKey */
       targetContact.publicKey = Buffer.from(result.publicKey, 'base64')
+    } else if (result.status === 'error') {
+      /* throw whatever error it is */
+      this.fire('error', result)
     }
 
     return result
   }
 
   async message(target, md) {
+    return this.send('msg', target, md)
+  }
+
+  async sendInfo(target) {
+    return this.send('info', target, JSON.stringify({
+      uuid: this.data.uuid,
+      username: this.data.username
+    }))
+  }
+
+  async send(prefix, target, md) {
     const contact = this.getContact(target)
     if (!contact.sharedSecret) throw Error('Keys have not been exchanged') 
 
@@ -396,14 +458,14 @@ class SpiritClient extends Evt {
     }
 
     if (!contact.log) contact.log = []
-    contact.log.push(md)
+    contact.log.push([Date.now(), md])
 
     return new Promise(resolve => {
       crypto.randomFill(new Uint8Array(16), (err, iv) => {
 
         const cipher = crypto.createCipheriv('aes-256-cbc', contact.sharedSecret.slice(0, 32), iv)
 
-        const prefixBuffer = Buffer.from('msg:' + this.data.uuid + target, 'utf8')
+        const prefixBuffer = Buffer.from(`${prefix}:` + this.data.uuid + target, 'utf8')
         const cipheredBuffer = Buffer.from(cipher.update(md))
         const finalCipheredBuffer = Buffer.from(cipher.final())
 

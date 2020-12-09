@@ -57,15 +57,20 @@ app.ws('/', ws => {
       }
     } else if (msg instanceof Buffer) {
       const messagePrefix = Buffer.from('msg:', 'utf8')
+      const infoPrefix = Buffer.from('info:', 'utf8')
+      let dataBuffer
       if (messagePrefix.equals(msg.slice(0, messagePrefix.length))) {
-        const dataBuffer = msg.slice(messagePrefix.length)
+        dataBuffer = msg.slice(messagePrefix.length)
+      } else if (infoPrefix.equals(msg.slice(0, infoPrefix.length))){
+        dataBuffer = msg.slice(infoPrefix.length)
+      }
+      if (!dataBuffer) return
 
-        /* the first 25 bytes is the source uuid */
-        const targetClientUuid = dataBuffer.slice(25, 50).toString('utf8')
-        const targetClient = uuid_cache.get(targetClientUuid)
-        if (targetClient) {
-          targetClient.send(msg)
-        }
+      /* the first 25 bytes is the source uuid, so take the next 25 bytes */
+      const targetClientUuid = dataBuffer.slice(25, 50).toString('utf8')
+      const targetClient = uuid_cache.get(targetClientUuid)
+      if (targetClient) {
+        targetClient.send(msg)
       }
     }
   })
