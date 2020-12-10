@@ -9,6 +9,7 @@
 #conversations {
   padding: 4px;
   grid-area: 1 / 1 / 2 / 2;
+  background-color: var(--slt-grey);
 }
 
 #message-area {
@@ -21,17 +22,19 @@
 }
 
 .visual-test {
-  border: 1px dashed var(--turq);
+  /* border: 1px dashed var(--turq); */
 }
 
 .contact-item {
   background-color: var(--slt-grey);
-  border: 1px solid var(--turq);
-  padding: 8px;
-  border-radius: 4px;
+  border-bottom: 1px solid var(--turq);
+  padding: 16px 8px;
   cursor: pointer;
   position: relative;
   transition: background-color 0.1s var(--ease-out);
+  display: flex;
+  align-items: center;
+  height: 56px;
 }
 
 .contact-item:hover {

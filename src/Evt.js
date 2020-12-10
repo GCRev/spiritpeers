@@ -59,10 +59,10 @@ class Evt {
   purgeScope(scope) {
     if (!scope) return
 
-    for (const [evtName, evtMap] of this.listeners.entries()) {
+    for (const [evtName, evtMap] of this.listeners) {
       if (evtMap.size) {
         let remaining = evtMap.size
-        for (const [key, value] of evtMap.entries()) {
+        for (const [key, value] of evtMap) {
           if (value.scope === scope) {
             evtMap.delete(key)
             remaining--
@@ -82,7 +82,7 @@ class Evt {
     const existingListeners = this.listeners.get(evtName)
     if (!existingListeners) return
 
-    for (const [evtFn, evtOb] of existingListeners.entries()) {
+    for (const [evtFn, evtOb] of existingListeners) {
       if (typeof scope !== 'undefined') {
         evtFn.call(scope, payload)
       } else if (evtOb.scope) {
