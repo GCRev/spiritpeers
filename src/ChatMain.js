@@ -18,8 +18,52 @@ class ChatMainDisplay extends React.Component {
     return (
       <div id="chat-main">
         <ConversationsDisplay spiritClient={this.props.spiritClient}></ConversationsDisplay>
-        <div id="message-area" className="visual-test">ass</div>
+        <MessageAreaDisplay></MessageAreaDisplay>
         <ToolbarDisplay></ToolbarDisplay>
+      </div>
+    )
+  }
+}
+
+class MessageHistoryDisplay extends React.Component {
+  constructor(data) {
+    super()
+  }
+
+  render() {
+    return (
+      <div id="message-history" className="visual-test">ass</div>
+    )
+  }
+}
+
+class ChatBoxDisplay extends React.Component {
+  constructor(data) {
+    super()
+  }
+
+  render() {
+    return (
+      <div id="chat-box-area" className="visual-test">
+        <div 
+          id="chat-box"
+          class='form-input' 
+          contenteditable='true'></div>
+      </div>
+    )
+  }
+}
+
+class MessageAreaDisplay extends React.Component {
+  constructor(data) {
+    super()
+  }
+
+  render() {
+    return (
+      <div id="message-area" className="visual-test">
+        <MessageHistoryDisplay></MessageHistoryDisplay>
+        <ChatBoxDisplay></ChatBoxDisplay>
       </div>
     )
   }
@@ -28,8 +72,15 @@ class ChatMainDisplay extends React.Component {
 class ConversationsDisplay extends React.Component {
   constructor(data) {
     super()
+    let contactList = []
+    for (let i = 0; i < 50; i++) {
+      contactList.push({
+        uuid: i,
+        displayName: 'test ' + i
+      })
+    }
     this.state = {
-      contactList: data.spiritClient.getContactList()
+      contactList: contactList //data.spiritClient.getContactList()
     }
   }
 
@@ -51,17 +102,17 @@ class ConversationsDisplay extends React.Component {
     const contactList = this.state.contactList
     return (
       <div id="conversations" className="visual-test">
-      {
-        !contactList.length ? 'No Contacts' :
-        contactList.map((contact, index) => {
-          return (
-            <ContactDisplay 
-              key={contact.uuid || index}
-              uuid={contact.uuid}
-              title={contact.displayName || contact.username || contact.uuid || "There's nothing here"}></ContactDisplay>
-          )
-        })
-      }
+        {
+          !contactList.length ? 'No Contacts' :
+            contactList.map((contact, index) => {
+              return (
+                <ContactDisplay
+                  key={contact.uuid || index}
+                  uuid={contact.uuid}
+                  title={contact.displayName || contact.username || contact.uuid || "There's nothing here"}></ContactDisplay>
+              )
+            })
+        }
       </div>
     )
   }
@@ -69,14 +120,14 @@ class ConversationsDisplay extends React.Component {
 
 class ContactDisplay extends React.Component {
   constructor(data) {
-    super() 
+    super()
   }
 
   render() {
     return (
       <div className="contact-item">
-      <div className="title">{this.props.title}</div>
-      <div className="info">{this.props.uuid}</div>
+        <div className="title">{this.props.title}</div>
+        <div className="info">{this.props.uuid}</div>
       </div>
     )
   }
@@ -84,7 +135,7 @@ class ContactDisplay extends React.Component {
 
 class ToolbarDisplay extends React.Component {
   constructor(data) {
-    super() 
+    super()
   }
 
   render() {
