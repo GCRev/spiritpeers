@@ -18,8 +18,55 @@ class ChatMainDisplay extends React.Component {
     return (
       <div id="chat-main">
         <ConversationsDisplay spiritClient={this.props.spiritClient}></ConversationsDisplay>
-        <div id="message-area" className="visual-test">ass</div>
+        <MessageAreaDisplay></MessageAreaDisplay>
         <ToolbarDisplay></ToolbarDisplay>
+      </div>
+    )
+  }
+}
+
+class MessageHistoryDisplay extends React.Component {
+  constructor(data) {
+    super()
+  }
+
+  render() {
+    return (
+      <div id="message-history" className="visual-test">ass</div>
+    )
+  }
+}
+
+class ChatBoxDisplay extends React.Component {
+  constructor(data) {
+    super()
+  }
+
+  render() {
+    return (
+      <div id="chat-box-area" className="visual-test">
+        <textarea 
+          id="chat-box" 
+          placeholder="ass"
+          className="form-input" 
+          name="chat-box" 
+          rows="0" 
+          cols="50"></textarea>
+      </div>
+    )
+  }
+}
+
+class MessageAreaDisplay extends React.Component {
+  constructor(data) {
+    super()
+  }
+
+  render() {
+    return (
+      <div id="message-area" className="visual-test">
+        <MessageHistoryDisplay></MessageHistoryDisplay>
+        <ChatBoxDisplay></ChatBoxDisplay>
       </div>
     )
   }
@@ -28,8 +75,15 @@ class ChatMainDisplay extends React.Component {
 class ConversationsDisplay extends React.Component {
   constructor(data) {
     super()
+    let contactList = []
+    for (let i = 0; i < 50; i++) {
+      contactList.push({
+        uuid: i,
+        displayName: 'test ' + i
+      })
+    }
     this.state = {
-      contactList: data.spiritClient.getContactList()
+      contactList: contactList //data.spiritClient.getContactList()
     }
   }
 
@@ -75,8 +129,8 @@ class ContactDisplay extends React.Component {
   render() {
     return (
       <div className="contact-item">
-      <div className="title">{this.props.title}</div>
-      <div className="info">{this.props.uuid}</div>
+        <div className="title">{this.props.title}</div>
+        <div className="info">{this.props.uuid}</div>
       </div>
     )
   }
