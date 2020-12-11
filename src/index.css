@@ -60,8 +60,7 @@
 
 body, html {
   background-color: var(--white);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  font-size: 10pt;
+  font-family: "SF Pro Text","SF Pro Icons","Helvetica Neue","Helvetica","Arial",sans-serif;  font-size: 10pt;
   position: relative;
   height: 100%;
   width: 100%;
@@ -104,4 +103,9 @@ body, html {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--d-turq); 
+}
+
+textarea {
+  font-family: inherit;
+  font-size: inherit;
 }

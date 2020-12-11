@@ -45,13 +45,10 @@ class ChatBoxDisplay extends React.Component {
   render() {
     return (
       <div id="chat-box-area" className="visual-test">
-        <textarea 
-          id="chat-box" 
-          placeholder="ass"
-          className="form-input" 
-          name="chat-box" 
-          rows="0" 
-          cols="50"></textarea>
+        <div 
+          id="chat-box"
+          class='form-input' 
+          contenteditable='true'></div>
       </div>
     )
   }
@@ -105,17 +102,17 @@ class ConversationsDisplay extends React.Component {
     const contactList = this.state.contactList
     return (
       <div id="conversations" className="visual-test">
-      {
-        !contactList.length ? 'No Contacts' :
-        contactList.map((contact, index) => {
-          return (
-            <ContactDisplay 
-              key={contact.uuid || index}
-              uuid={contact.uuid}
-              title={contact.displayName || contact.username || contact.uuid || "There's nothing here"}></ContactDisplay>
-          )
-        })
-      }
+        {
+          !contactList.length ? 'No Contacts' :
+            contactList.map((contact, index) => {
+              return (
+                <ContactDisplay
+                  key={contact.uuid || index}
+                  uuid={contact.uuid}
+                  title={contact.displayName || contact.username || contact.uuid || "There's nothing here"}></ContactDisplay>
+              )
+            })
+        }
       </div>
     )
   }
@@ -123,7 +120,7 @@ class ConversationsDisplay extends React.Component {
 
 class ContactDisplay extends React.Component {
   constructor(data) {
-    super() 
+    super()
   }
 
   render() {
@@ -138,7 +135,7 @@ class ContactDisplay extends React.Component {
 
 class ToolbarDisplay extends React.Component {
   constructor(data) {
-    super() 
+    super()
   }
 
   render() {
