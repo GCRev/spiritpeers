@@ -228,7 +228,8 @@ app.post('/talkto', (req, res) => {
         fromPeerUDID: req.body.source,
         toPeerUDID: req.body.target,
         publicKey: req.body.publicKey,
-        availablePorts: req.body.availablePorts
+        availablePorts: req.body.availablePorts,
+        ts: Date.now()
       })
       res.json({ 
         success: true,
@@ -236,6 +237,8 @@ app.post('/talkto', (req, res) => {
         message: `Request sent to: ${req.body.target}`
       })
     } else {
+      const cacheEntry = cache.get(forwardKey)
+      cacheEntry.ts = Date.now()
       res.json({ 
         success: true,
         status: 'pending_response',
@@ -255,6 +258,20 @@ app.post('/talkto', (req, res) => {
     })
   }
 })
+
+function groomCache() {
+  const now = Date.now()
+  const expirationTime = 5 * 1000 /* faiv minut */
+  for (const [key, value] of cache) {
+    const diff = now - value.ts 
+    if (diff > expirationTime) {
+      cache.delete(key)
+    }
+  }
+  setTimeout(groomCache, 30000)
+}
+
+groomCache()
 
 app.get('/clients', (req, res) => {
   res.json({count: cli_cache.size})

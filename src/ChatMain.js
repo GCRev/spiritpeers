@@ -143,7 +143,7 @@ class ToolbarDisplay extends React.Component {
 
   render() {
     return (
-      <div id="main-toolbar" className="visual-test">Settings go here</div>
+      <div id="main-toolbar" className="visual-test">Toolbar goes here</div>
     )
   }
 }

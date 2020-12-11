@@ -1,4 +1,5 @@
 import Evt from './Evt'
+import Config from './config.mjs'
 // import {v4 as uuidv4} from 'uuid'
 const ipcr = window.require('electron').ipcRenderer
 const fs = window.require('fs')
@@ -9,7 +10,8 @@ const path = window.require('path')
 const {pipeline, finished, Readable, Writable} = window.require('stream')
 const {StringDecoder} = window.require('string_decoder')
 
-const SERVER_URL = 'node.one:80'
+
+const SERVER_URL = Config.SERVER_URL
 const ECDH_CURVE = 'secp521r1'
 const UUID_LEN = 25
 
