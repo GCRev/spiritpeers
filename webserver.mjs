@@ -261,7 +261,7 @@ app.post('/talkto', (req, res) => {
 
 function groomCache() {
   const now = Date.now()
-  const expirationTime = 5 * 1000 /* faiv minut */
+  const expirationTime = 5 * 60 * 1000 /* faiv minut */
   for (const [key, value] of cache) {
     const diff = now - value.ts 
     if (diff > expirationTime) {

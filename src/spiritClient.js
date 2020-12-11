@@ -44,6 +44,8 @@ class SpiritClient extends Evt {
       .then(() => {
         this.fire('show-sign-up', !this.data.foundResourceFile)
       })
+
+    this.notifications = new Map()
   }
 
   setUsername(username) {
@@ -513,6 +515,26 @@ class SpiritClient extends Evt {
       } catch (err) {
         this.fire('logon-failure', err.message)
       }
+    }
+  }
+
+  notify(params) {
+    const eventParams = Object.assign({
+      title: 'Notification',
+      content: 'This is a notification',
+      ts: Date.now(),
+      id: crypto.randomBytes(20).toString('hex')
+    }, params)
+
+    this.notifications.set(eventParams.id, eventParams)
+    this.fire('notification', eventParams)
+  }
+
+  cancelNotify(identifier) {
+    if (this.notifications.has(identifier)) {
+      const notification = this.notifications.get(identifier)
+      this.notifications.delete(identifier)
+      this.fire('notification-cancel', notification)
     }
   }
   

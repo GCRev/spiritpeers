@@ -78,7 +78,6 @@
   width: 33%;
   max-width: 480px;
   padding: 16px;
-  border-radius: 8px;
   box-shadow: var(--standard-box-shadow);
   flex-direction: column;
   display: flex;
@@ -156,3 +155,47 @@ dd.invalid-reasons > p {
   color: var(--red);
   font-size: 11px;
 }
+
+.notifications {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 300px;
+  filter: drop-shadow(0 0 8px rgba(0,0,0,0.3));
+  padding: 4px;
+}
+
+.notification {
+  margin-top: 4px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column-reverse;
+  box-sizing: border-box;
+}
+
+.notification .content {
+  background-color: var(--white);
+  padding: 8px;
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.notification-enter {
+  margin-top: 0;
+}
+
+.notification-enter-active, .notification-exit {
+  margin-top: 4px;
+}
+
+.notification-enter-active {
+  transition: all 0.4s var(--ease-out), margin-top 0.2s;
+}
+
+.notification-exit-active {
+  margin-top: 0;
+  transition: all 0.4s var(--ease-out), margin-top 0.2s 0.2s;
+}
+

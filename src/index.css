@@ -78,6 +78,12 @@ body, html {
   left: 0;
 }
 
+.frame-full {
+  height: 100%;
+  width: 100%;
+  position: relative;
+}
+
 .flex-center {
   display: flex;
   justify-content: center;
