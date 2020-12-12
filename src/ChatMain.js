@@ -47,8 +47,8 @@ class ChatBoxDisplay extends React.Component {
       <div id="chat-box-area" className="visual-test">
         <div 
           id="chat-box"
-          class='form-input' 
-          contenteditable='true'></div>
+          className='form-input' 
+          contentEditable='true'></div>
       </div>
     )
   }
@@ -75,12 +75,12 @@ class ConversationsDisplay extends React.Component {
     let contactList = []
     for (let i = 0; i < 50; i++) {
       contactList.push({
-        uuid: i,
+        uuid: `${i + 1}`,
         displayName: 'test ' + i
       })
     }
     this.state = {
-      contactList: contactList //data.spiritClient.getContactList()
+      contactList: [...data.spiritClient.getContactList(), ...contactList]
     }
   }
 
@@ -109,7 +109,9 @@ class ConversationsDisplay extends React.Component {
                 <ContactDisplay
                   key={contact.uuid || index}
                   uuid={contact.uuid}
-                  title={contact.displayName || contact.username || contact.uuid || "There's nothing here"}></ContactDisplay>
+                  title={contact.displayName || contact.username || contact.uuid || "There's nothing here"}
+                >
+                </ContactDisplay>
               )
             })
         }

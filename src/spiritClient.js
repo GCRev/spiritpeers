@@ -340,6 +340,34 @@ class SpiritClient extends Evt {
       }
 
       this.webSocket = new WebSocket(`ws://${SERVER_URL}`)
+      this.webSocket.addEventListener('close', evt => {
+        if (evt.code !== 1000) {
+          this.notify({
+            title: 'Connection Error',
+            content: 'Real-time connection to serverino could not be established',
+            className: 'warn',
+            handler: () => {
+              for (let a = 1; a <= 8; a++) {
+                setTimeout(() => {
+                this.notify({
+                  title: 'Rude',
+                  content: "Aren't you even a little concerned? The App basically won't do anything.",
+                  className: 'diabolical',
+                  handler: () => {
+                    requestAnimationFrame(() => {
+                      this.notify({
+                        title: ':(',
+                        content: "Bummer dude. Did you know this app has notifications?",
+                        className: 'fappy',
+                      })
+                    })
+                  }
+                })}, a * 1)
+              }
+            }
+          })
+        }
+      })
       this.webSocket.addEventListener('message', async evt => {
         if (evt.data === 'connected') {
           if (this.webSocket.readyState === WebSocket.OPEN) {
@@ -377,6 +405,7 @@ class SpiritClient extends Evt {
 
           if (!dataBuffer) return
 
+          /* "target" is really the source contact in this case -- the sender */
           target = dataBuffer.slice(0, UUID_LEN).toString('utf8')
 
           if (!target) return
@@ -393,22 +422,29 @@ class SpiritClient extends Evt {
           md += decipher.update(encMessage, null, 'utf8')
           md += decipher.final('utf8') 
           console.log(md)
-          handler({contact: Object.assign({}, contact), data: md})
+          handler({contact: contact, info: md})
           return 
         }
       })
     })
   }
 
+  updateContact(contact, info) {
+    /* this sucks */
+    Object.assign(contact, info)
+  }
+
   parseMessageReceived(contact, md) {
-    this.fire('message-received', {contact: contact, md: md})
+    this.fire('message-received', {source: contact, md: md})
   }
 
   parseInfoReceived(contact, info) {
     try {
       const rjson = JSON.parse(info)
-      Object.assign(contact, rjson)
-      this.fire('info-received', {contact: contact, info: rjson})
+      if (rjson.updateContact) {
+        this.updateContact(contact, rjson.updateContact)
+      }
+      this.fire('info-received', {source: contact, info: rjson})
     } catch (err) {
       /* do nothing */
     }
@@ -447,8 +483,10 @@ class SpiritClient extends Evt {
 
   async sendInfo(target) {
     return this.send('info', target, JSON.stringify({
-      uuid: this.data.uuid,
-      username: this.data.username
+      contactInfo: {
+        uuid: this.data.uuid,
+        username: this.data.username
+      }
     }))
   }
 
@@ -530,9 +568,12 @@ class SpiritClient extends Evt {
     this.fire('notification', eventParams)
   }
 
-  cancelNotify(identifier) {
+  cancelNotify(identifier, handlerParams) {
     if (this.notifications.has(identifier)) {
       const notification = this.notifications.get(identifier)
+      if (typeof notification.handler === 'function') {
+        notification.handler(handlerParams || {})
+      }
       this.notifications.delete(identifier)
       this.fire('notification-cancel', notification)
     }

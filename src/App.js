@@ -20,10 +20,15 @@ class NotificationDisplay extends React.Component {
       <div 
       ref={this.props.nodeRef}
       onClick={this.clickHandler}
-      className="notification"
+      className={`notification ${this.props.item.className || ''}`}
       >
-        <div className="content">
-          {this.props.item.content}
+        <div className="wrapper">
+          <div className="title">
+            {this.props.item.title}
+          </div>
+          <div className="content">
+            {this.props.item.content}
+          </div>
         </div>
       </div>
     )
@@ -70,8 +75,8 @@ class AppDisplay extends React.Component {
   notify(params) {
     this.setState({
       notifications: [
-        ...this.state.notifications,
-        params
+        params,
+        ...this.state.notifications
       ]
     })
   }

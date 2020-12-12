@@ -160,7 +160,7 @@ dd.invalid-reasons > p {
   position: absolute;
   bottom: 0;
   right: 0;
-  width: 300px;
+  width: 400px;
   filter: drop-shadow(0 0 8px rgba(0,0,0,0.3));
   padding: 4px;
 }
@@ -173,13 +173,67 @@ dd.invalid-reasons > p {
   box-sizing: border-box;
 }
 
-.notification .content {
+.notification .wrapper {
+  --tint: transparent;
   background-color: var(--white);
   padding: 8px;
   min-height: 64px;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  justify-items: center;
   position: relative;
+  transition: all 0.1s;
+}
+
+.notification .wrapper::before {
+  content: '';
+  display: block;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  pointer-events: none;
+  background-color: var(--tint);
+  opacity: 0.3;
+}
+
+.notification.info .wrapper {
+  --tint: var(--lt-blue);
+}
+
+.notification.warn .wrapper {
+  --tint: var(--lt-yellow);
+}
+
+.notification.severe .wrapper {
+  --tint: var(--red);
+}
+
+.notification.diabolical .wrapper {
+  --tint: var(--plum);
+}
+
+.notification.fappy .wrapper {
+  --tint: var(--turq);
+}
+
+.notification .wrapper:hover {
+  filter: brightness(0.95) saturate(1.8);
+  cursor: pointer;
+}
+
+.notification .wrapper .title {
+  height: 1.5em;
+  position: relative;
+  z-index: 100;
+}
+
+.notification .wrapper .content {
+  flex: 1;
+  padding-left: 8px;
+  position: relative;
+  z-index: 100;
 }
 
 .notification-enter {
