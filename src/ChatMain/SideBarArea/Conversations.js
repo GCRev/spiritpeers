@@ -1,73 +1,4 @@
-import './App.css'
-import './index.css'
-import './ChatMain.css'
 import React from 'react'
-
-class ChatMainDisplay extends React.Component {
-  constructor(data) {
-    super()
-  }
-
-  componentDidMount() {
-  }
-
-  componentWillUnmount() {
-  }
-
-  render() {
-    return (
-      <div id="chat-main">
-        <ConversationsDisplay spiritClient={this.props.spiritClient}></ConversationsDisplay>
-        <MessageAreaDisplay></MessageAreaDisplay>
-        <ToolbarDisplay></ToolbarDisplay>
-      </div>
-    )
-  }
-}
-
-class MessageHistoryDisplay extends React.Component {
-  constructor(data) {
-    super()
-  }
-
-  render() {
-    return (
-      <div id="message-history" className="visual-test">ass</div>
-    )
-  }
-}
-
-class ChatBoxDisplay extends React.Component {
-  constructor(data) {
-    super()
-  }
-
-  render() {
-    return (
-      <div id="chat-box-area" className="visual-test">
-        <div 
-          id="chat-box"
-          className='form-input' 
-          contentEditable='true'></div>
-      </div>
-    )
-  }
-}
-
-class MessageAreaDisplay extends React.Component {
-  constructor(data) {
-    super()
-  }
-
-  render() {
-    return (
-      <div id="message-area" className="visual-test">
-        <MessageHistoryDisplay></MessageHistoryDisplay>
-        <ChatBoxDisplay></ChatBoxDisplay>
-      </div>
-    )
-  }
-}
 
 class ConversationsDisplay extends React.Component {
   constructor(data) {
@@ -135,16 +66,4 @@ class ContactDisplay extends React.Component {
   }
 }
 
-class ToolbarDisplay extends React.Component {
-  constructor(data) {
-    super()
-  }
-
-  render() {
-    return (
-      <div id="main-toolbar" className="visual-test">Toolbar goes here</div>
-    )
-  }
-}
-
-export default ChatMainDisplay
+export default ConversationsDisplay
