@@ -15,6 +15,127 @@ const SERVER_URL = Config.SERVER_URL
 const ECDH_CURVE = 'secp521r1'
 const UUID_LEN = 25
 
+class Contact extends Evt {
+  constructor(params) {
+    super()
+
+    /* these keys will be excluded from write */
+    Object.defineProperties(this, {
+      timeoutId: {
+        writable: true,
+        enumerable: false
+      },
+      timeout: {
+        value: 5 * 60 * 1000, 
+        enumerable: false
+      },
+      _state: {
+        value: '',
+        writable: true,
+        enumerable: false
+      },
+      state: {
+        get() {
+          return this._state
+        },
+        set(nv) {
+          this._state = nv
+          this.fire('set-state', nv)
+        }
+      },
+      secret: {
+        writable: true,
+        enumerable: false
+      },
+      sharedSecret: {
+        writable: true,
+        enumerable: false
+      }
+    })
+
+    this.log = []
+    this.vaultToData(params)
+  }
+
+  getTitle() {
+    return this.displayName || this.username || this.uuid || "There's nothing here"
+  }
+
+  vaultToData(vaultData) {
+    if (!vaultData) return
+
+    const contact = vaultData 
+    Object.assign(this, contact)
+    this.privateKey = Buffer.from(contact.privateKey, 'base64')
+    if (contact.publicKey) this.publicKey = Buffer.from(contact.publicKey, 'base64')
+
+    const secret = crypto.createECDH(ECDH_CURVE)
+    secret.setPrivateKey(this.privateKey)
+    this.secret = secret
+  }
+  
+  dataToVault() {
+    const result = Object.assign({}, this)
+
+    result.privateKey = this.privateKey.toString('base64')
+    if (this.publicKey) result.publicKey = this.publicKey.toString('base64')
+    return result
+  }
+
+  writeToLog(md, uuid) {
+    this.log.push([Date.now(), uuid || this.uuid, md])
+    this.fire('message-logged', this)
+  }
+
+  conversationRequest() {
+    this.state = 'pending-accept'
+    this.fire('conversation-request', this)
+  }
+
+  async talkTo() {
+    if (this.state.requestState === 'pending-accept') {
+      this.state = ''
+    } else {
+      if (!isNaN(this.timeoutId)) {
+        clearTimeout(this.timeoutId)
+        this.timeoutId = undefined
+      }
+      this.state = 'pending'
+      const result = await this.spiritClient.talkTo(this.uuid)
+      console.log(result)
+      if (result.status === 'error') {
+        this.state = ''
+        this.spiritClient.notify({
+          title: 'Connection Error',
+          content: result.message,
+          className: 'warn'
+        })
+      } else {
+        this.state = 'waiting'
+        this.timeoutId = setTimeout(() => {
+          this.state = ''
+          this.timeoutId = undefined
+        }, this.timeout)
+        return true
+      }
+    }
+    return false
+  }
+
+  async message(md) {
+    let result = {}
+
+    this.writeToLog(md, this.spiritClient.data.uuid)
+
+    try {
+      result = await this.spiritClient.message(this.uuid, md)
+    } catch (err) {
+      /* uhh */
+    }
+    return result
+  }
+}
+
 class SpiritClient extends Evt { 
   constructor() {
     super()
@@ -122,16 +243,9 @@ class SpiritClient extends Evt {
     if (this.vault.contacts) {
       const newContacts = {}
       for (const contactUuid in this.vault.contacts) {
-        const newContact = {}
-        const contact = this.vault.contacts[contactUuid]
-        newContact.privateKey = Buffer.from(contact.privateKey, 'base64')
-        if (contact.publicKey) newContact.publicKey = Buffer.from(contact.publicKey, 'base64')
-
-        const secret = crypto.createECDH(ECDH_CURVE)
-        secret.setPrivateKey(newContact.privateKey)
-        newContact.secret = secret
-
-        newContacts[contactUuid] = newContact 
+        const contact = new Contact(this.vault.contacts[contactUuid])
+        Object.defineProperty(contact, 'spiritClient', {value: this})
+        newContacts[contactUuid] = contact
       }
       this.data.contacts = newContacts
     }
@@ -170,6 +284,7 @@ class SpiritClient extends Evt {
   }
 
   getContact(uuid) {
+    if (!uuid) return
     if (uuid === this.data.uuid) return 
 
     let result = {}
@@ -218,16 +333,7 @@ class SpiritClient extends Evt {
     if (this.data.contacts) {
       const newContacts = {}
       for (const contactUuid in this.data.contacts) {
-        const contact = this.data.contacts[contactUuid]
-        const result = Object.assign({}, contact)
-
-        /* don't write these keys */
-        delete result.secret
-        delete result.sharedSecret
-
-        result.privateKey = contact.privateKey.toString('base64')
-        if (contact.publicKey) result.publicKey = contact.publicKey.toString('base64')
-        newContacts[contactUuid] = result 
+        newContacts[contactUuid] = this.data.contacts[contactUuid].dataToVault()
       }
       this.vault.contacts = newContacts
     }
@@ -331,8 +437,14 @@ class SpiritClient extends Evt {
     })
   }
 
-  async connect() {
+  async connect(retryOnly) {
     if (!this.data.uuid) throw Error('No uuid')
+
+    if (this.webSocket &&
+      this.webSocket.readyState === WebSocket.OPEN && 
+      retryOnly) {
+      return 
+    }
 
     return new Promise(resolve => {
       if (this.webSocket) {
@@ -340,33 +452,12 @@ class SpiritClient extends Evt {
       }
 
       this.webSocket = new WebSocket(`ws://${SERVER_URL}`)
-      this.webSocket.addEventListener('close', evt => {
-        if (evt.code !== 1000) {
-          this.notify({
-            title: 'Connection Error',
-            content: 'Real-time connection to serverino could not be established',
-            className: 'warn',
-            handler: () => {
-              for (let a = 1; a <= 8; a++) {
-                setTimeout(() => {
-                this.notify({
-                  title: 'Rude',
-                  content: "Aren't you even a little concerned? The App basically won't do anything.",
-                  className: 'diabolical',
-                  handler: () => {
-                    requestAnimationFrame(() => {
-                      this.notify({
-                        title: ':(',
-                        content: "Bummer dude. Did you know this app has notifications?",
-                        className: 'fappy',
-                      })
-                    })
-                  }
-                })}, a * 1)
-              }
-            }
-          })
-        }
+      this.webSocket.addEventListener('error', evt => {
+        this.notify({
+          title: 'Connection Error',
+          content: 'Real-time connection to serverino encountered an error',
+          className: 'warn'
+        })
       })
       this.webSocket.addEventListener('message', async evt => {
         if (evt.data === 'connected') {
@@ -384,7 +475,7 @@ class SpiritClient extends Evt {
               const targetContact = this.getContact(dataSplit[0])
               targetContact.publicKey = Buffer.from(dataSplit[1], 'base64')
               /* command ui to display a notification */
-              this.fire('conversation-request', targetContact)
+              targetContact.conversationRequest()
               break
             }
           default:
@@ -435,6 +526,7 @@ class SpiritClient extends Evt {
   }
 
   parseMessageReceived(contact, md) {
+    contact.writeToLog(md)
     this.fire('message-received', {source: contact, md: md})
   }
 
@@ -450,7 +542,8 @@ class SpiritClient extends Evt {
     }
   }
 
-  async talkTo(target, ports) {
+  async talkTo(target) {
+    if (!target) return
     if (!this.data.uuid) return 
     
     const targetContact = this.getContact(target)
@@ -464,43 +557,48 @@ class SpiritClient extends Evt {
         availablePorts: [80, 443]
       }
     })
-    console.log(result)
 
     if (result.status === 'accept_response' && result.publicKey) {
       /* this is the public key from the target's secretKey */
       targetContact.publicKey = Buffer.from(result.publicKey, 'base64')
     } else if (result.status === 'error') {
       /* throw whatever error it is */
-      this.fire('error', result)
+      this.fire('talk-to-error', result)
+    }
+
+    if (result.success) {
+      this.fire('talk-to', {response: result, target: targetContact})
     }
 
     return result
   }
 
   async message(target, md) {
-    return this.send('msg', target, md)
+    const result = await this.send('msg', target, md)
+    this.fire('message-sent', {result: result, target: target, md: md})
+    return result
   }
 
   async sendInfo(target) {
-    return this.send('info', target, JSON.stringify({
+    const info = {
       contactInfo: {
         uuid: this.data.uuid,
         username: this.data.username
       }
-    }))
+    }
+    this.fire('info-sent', {target: target, info: info})
+    return this.send('info', target, JSON.stringify(info))
   }
 
   async send(prefix, target, md) {
     const contact = this.getContact(target)
-    if (!contact.sharedSecret) throw Error('Keys have not been exchanged') 
+
+    if (!contact.sharedSecret) return {offline: true}
 
     if (!this.webSocket || 
       (this.webSocket && this.webSocket.readyState !== WebSocket.OPEN)) {
       await this.connect()
     }
-
-    if (!contact.log) contact.log = []
-    contact.log.push([Date.now(), md])
 
     return new Promise(resolve => {
       crypto.randomFill(new Uint8Array(16), (err, iv) => {
@@ -514,7 +612,7 @@ class SpiritClient extends Evt {
         if (this.webSocket && 
           this.webSocket.readyState === WebSocket.OPEN) {
           this.webSocket.send(Buffer.concat([prefixBuffer, Buffer.from(iv), cipheredBuffer, finalCipheredBuffer]))
-          resolve()
+          resolve({online: true})
         }
       })
     })
@@ -522,13 +620,13 @@ class SpiritClient extends Evt {
 
   async logon(username, password, email) {
     if (typeof username === 'undefined') {
-      username = this.data.username
+      username = Config.USERNAME || this.data.username
     } else if (typeof username === 'string') {
       this.setUsername(username)
     }
 
     if (typeof password === 'undefined') {
-      password = this.data.password
+      password = Config.PASSWORD || this.data.password
     } else if (typeof password === 'string') {
       this.setPassword(password)
     }
@@ -577,6 +675,10 @@ class SpiritClient extends Evt {
       this.notifications.delete(identifier)
       this.fire('notification-cancel', notification)
     }
+  }
+
+  getTitle() {
+    return this.data.displayName || this.data.username || this.data.uuid || "There's nothing here"
   }
   
 }

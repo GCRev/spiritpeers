@@ -83,6 +83,12 @@ ipcMain.handle('talk-to', (evt, args) => {
       url: url
     })
     req.setHeader('Content-Type', 'application/json')
+    req.on('error', err => {
+      resolve({
+        status: 'error',
+        message: 'Could not connect to server' 
+      })
+    })
     req.on('response', response => {
       let buffer = ''
       response.on('data', chunk => {

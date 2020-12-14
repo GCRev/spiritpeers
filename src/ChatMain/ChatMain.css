@@ -10,6 +10,7 @@
   grid-area: 1 / 1 / 2 / 2;
   overflow-y: auto;
   background-color: var(--slt-grey);
+  border: 2px solid var(--slt-grey);
 }
 
 #message-area {
@@ -31,12 +32,6 @@
   overflow:auto;
 }
 
-#message-history {
-  padding: 4px;
-  width: 100%;
-  flex-grow: 1;
-}
-
 #main-toolbar {
   grid-area: 2 / 1 / 3 / 2;
 }
@@ -55,11 +50,20 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  height: 56px;
+  height: var(--contact-item-height);
+}
+
+.contact-item.pending {
+  background-color: rgba(var(--d-turq-s), 0.3);
 }
 
 .contact-item:hover {
   background-color: rgba(var(--turq-s), 0.3);
+}
+
+.contact-item.pending-accept {
+  background-color: rgba(var(--turq-s), 0.3);
+  border: 1px solid var(--turq);
 }
 
 .contact-item:hover::after {
@@ -83,4 +87,77 @@
 .contact-item .info {
   margin-left: 8px;
   color: var(--grey);
+}
+
+.contact-item .underline {
+  position: absolute;
+  height: 0;
+  width: 100%;
+  bottom: 0;
+  left: 0;
+  background-color: var(--turq);
+  transition: all 0.1s var(--ease-out);
+}
+
+.contact-item.waiting .underline {
+  height: 0;
+  transition: height 0.1s var(--ease-out);
+}
+
+message {
+  display: block;
+  padding: 8px;
+  margin: 4px;
+  position: relative;
+}
+
+message .date {
+  color: var(--grey);
+  height: 0;
+  overflow: hidden;
+  position: absolute;
+  left: 4px;
+  top: 4px;
+}
+
+message .content span.title {
+  font-weight: bold;
+  padding: 4px 6px;
+  border-radius: 1em;
+}
+
+message.from-source .content span.title {
+  background-color: var(--slt-grey);
+}
+
+message.from-target .content span.title{
+  background-color: var(--turq);
+  color: var(--white);
+}
+
+.message-history {
+  padding: 4px;
+  width: 100%;
+  flex-grow: 1;
+}
+
+.message-history > .title {
+  font-size: 16px;
+  height: var(--contact-item-height);
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 8px;
+}
+
+.message-history > .title::after {
+  content: '';
+  display: block;
+  position: absolute;
+  height: 16px;
+  bottom: 1px;
+  right: 0;
+  left: 0;
+  pointer-events: none;
+  background: linear-gradient(transparent 0%, rgba(var(--d-turq-s), 0.2) 100%)
 }

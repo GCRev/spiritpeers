@@ -8,6 +8,8 @@ import SpiritClient from './spiritClient';
 const spiritClient = new SpiritClient()
 window.spiritClient = spiritClient
 
+spiritClient.logon()
+
 ReactDOM.render(
   <React.StrictMode>
   <AppDisplay spiritClient={spiritClient}/>

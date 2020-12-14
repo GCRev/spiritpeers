@@ -21,7 +21,7 @@ class ChatMainDisplay extends React.Component {
     return (
       <div id="chat-main">
         <ConversationsDisplay spiritClient={this.props.spiritClient}></ConversationsDisplay>
-        <MessageAreaDisplay></MessageAreaDisplay>
+        <MessageAreaDisplay spiritClient={this.props.spiritClient}></MessageAreaDisplay>
         <ToolbarDisplay></ToolbarDisplay>
       </div>
     )

@@ -234,7 +234,8 @@ app.post('/talkto', (req, res) => {
       res.json({ 
         success: true,
         status: 'pending_response',
-        message: `Request sent to: ${req.body.target}`
+        message: `Request sent to: ${req.body.target}`,
+        target: req.body.target
       })
     } else {
       const cacheEntry = cache.get(forwardKey)
@@ -242,7 +243,8 @@ app.post('/talkto', (req, res) => {
       res.json({ 
         success: true,
         status: 'pending_response',
-        message: `Request already to: ${req.body.target}`
+        message: `Request already sent to: ${req.body.target}`,
+        target: req.body.target
       })
     }
   } else {
