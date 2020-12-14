@@ -194,22 +194,26 @@ app.post('/talkto', (req, res) => {
     const forwardKey = `${req.body.source}-${req.body.target}`
     const reverseKey = `${req.body.target}-${req.body.source}`
 
-    /* 
-     * check the client cache for an online client matching the 'target' 
-     *
-     * this will notify the target that a conversation is requested.
-     * the target still has to respond by submitting their own 'talk-to'
-     * request. This is the only way to exchange public keys
-     *
-     */
-    if (uuid_cache.has(req.body.target)) {
-      const targetClient = uuid_cache.get(req.body.target)
-      if (targetClient) {
-        targetClient.send(`req:${req.body.source}|${req.body.publicKey}`)
+    const sendClientRequest = (prefix = 'req') => {
+      /* 
+       * check the client cache for an online client matching the 'target' 
+       *
+       * this will notify the target that a conversation is requested.
+       * the target still has to respond by submitting their own 'talk-to'
+       * request. This is the only way to exchange public keys
+       *
+       */
+      if (uuid_cache.has(req.body.target)) {
+        const targetClient = uuid_cache.get(req.body.target)
+        if (targetClient) {
+          targetClient.send(`${prefix}:${req.body.source}|${req.body.publicKey}`)
+        }
       }
     }
 
     if (cache.has(reverseKey)) {
+      sendClientRequest('acc')
+
       const reverseRequest = cache.get(reverseKey)
 
       /* handle the case where there is already a request from another peer to this peer */
@@ -231,6 +235,9 @@ app.post('/talkto', (req, res) => {
         availablePorts: req.body.availablePorts,
         ts: Date.now()
       })
+
+      sendClientRequest()
+
       res.json({ 
         success: true,
         status: 'pending_response',
@@ -238,6 +245,8 @@ app.post('/talkto', (req, res) => {
         target: req.body.target
       })
     } else {
+      sendClientRequest()
+
       const cacheEntry = cache.get(forwardKey)
       cacheEntry.ts = Date.now()
       res.json({ 
@@ -277,6 +286,11 @@ groomCache()
 
 app.get('/clients', (req, res) => {
   res.json({count: cli_cache.size})
+})
+
+app.get('/cache/clear', (req, res) => {
+  cache.clear()
+  res.json({success: true})
 })
 
 app.get('/cache', (req, res) => {

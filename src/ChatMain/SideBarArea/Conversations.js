@@ -17,17 +17,19 @@ class ConversationsDisplay extends React.Component {
 
   componentDidMount() {
     this.props.spiritClient.on('set-contacts', this.setContacts, this)
+    this.props.spiritClient.on('create-contact', this.setContacts, this)
     this.props.spiritClient.on('conversation-request', this.handleConversationRequest, this)
   }
 
   componentWillUnmount() {
     this.props.spiritClient.un('set-contacts', this.setContacts, this)
+    this.props.spiritClient.un('create-contact', this.setContacts, this)
     this.props.spiritClient.un('conversation-request', this.handleConversationRequest, this)
   }
 
   setContacts() {
     this.setState({
-      contactList: this.props.spiritClient.getContactList()
+      contactList: [...this.props.spiritClient.getContactList()]
     })
   }
 

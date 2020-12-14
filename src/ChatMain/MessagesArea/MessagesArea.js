@@ -31,7 +31,7 @@ class MessageHistoryDisplay extends React.Component {
   handleMessageReceived(args) {
     console.log(args)
     this.setState({
-      log: args.target.log
+      log: args.source.log
     })
   }
 

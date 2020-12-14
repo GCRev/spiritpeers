@@ -14,6 +14,7 @@ const {StringDecoder} = window.require('string_decoder')
 const SERVER_URL = Config.SERVER_URL
 const ECDH_CURVE = 'secp521r1'
 const UUID_LEN = 25
+const LOG_LIMIT = 25
 
 class Contact extends Evt {
   constructor(params) {
@@ -21,6 +22,10 @@ class Contact extends Evt {
 
     /* these keys will be excluded from write */
     Object.defineProperties(this, {
+      spiritClient: {
+        writable: true,
+        enumerable: false
+      },
       timeoutId: {
         writable: true,
         enumerable: false
@@ -54,7 +59,9 @@ class Contact extends Evt {
     })
 
     this.log = []
-    this.vaultToData(params)
+    if (params) {
+      this.vaultToData(params)
+    }
   }
 
   getTitle() {
@@ -84,6 +91,9 @@ class Contact extends Evt {
 
   writeToLog(md, uuid) {
     this.log.push([Date.now(), uuid || this.uuid, md])
+    if (this.log.length > LOG_LIMIT) {
+      this.log.shift()
+    }
     this.fire('message-logged', this)
   }
 
@@ -93,8 +103,10 @@ class Contact extends Evt {
   }
 
   async talkTo() {
-    if (this.state.requestState === 'pending-accept') {
+    if (this.state === 'pending-accept') {
+      await this.spiritClient.talkTo(this.uuid)
       this.state = ''
+      return true
     } else {
       if (!isNaN(this.timeoutId)) {
         clearTimeout(this.timeoutId)
@@ -287,16 +299,18 @@ class SpiritClient extends Evt {
     if (!uuid) return
     if (uuid === this.data.uuid) return 
 
-    let result = {}
+    let result = new Contact()
     const secret = crypto.createECDH(ECDH_CURVE)
 
     if (!(uuid in this.data.contacts)) {
       secret.generateKeys()
+      result.spiritClient = this
       result.privateKey = secret.getPrivateKey()
       result.uuid = uuid
       result.secret = secret
       this.data.contacts[uuid] = result
       this.fire('create-contact', result)
+      this.writeVaultFile()
     } else {
       result = this.data.contacts[uuid]
     }
@@ -478,6 +492,17 @@ class SpiritClient extends Evt {
               targetContact.conversationRequest()
               break
             }
+          case 'acc':
+            {
+              /* 
+               * this is the accept case -- still have to set the publicKey but
+               * don't show a notification in the ui about it
+               */
+              const dataSplit = data.split('|')
+              const targetContact = this.getContact(dataSplit[0])
+              targetContact.publicKey = Buffer.from(dataSplit[1], 'base64')
+              break
+            }
           default:
             break
           }
@@ -513,7 +538,7 @@ class SpiritClient extends Evt {
           md += decipher.update(encMessage, null, 'utf8')
           md += decipher.final('utf8') 
           console.log(md)
-          handler({contact: contact, info: md})
+          handler.call(this, contact, md)
           return 
         }
       })
@@ -527,6 +552,7 @@ class SpiritClient extends Evt {
 
   parseMessageReceived(contact, md) {
     contact.writeToLog(md)
+    this.writeVaultFile()
     this.fire('message-received', {source: contact, md: md})
   }
 
@@ -575,6 +601,7 @@ class SpiritClient extends Evt {
 
   async message(target, md) {
     const result = await this.send('msg', target, md)
+    this.writeVaultFile()
     this.fire('message-sent', {result: result, target: target, md: md})
     return result
   }
