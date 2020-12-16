@@ -63,6 +63,7 @@ class ContactDisplay extends React.Component {
       requestState: ''
     }
     this.clickHandler = this.clickHandler.bind(this)
+    this.handleMoreInfo = this.handleMoreInfo.bind(this)
     this.timerBarRef = React.createRef()
   }
 
@@ -110,12 +111,19 @@ class ContactDisplay extends React.Component {
     */
   }
 
+  handleMoreInfo(evt) {
+    evt.stopPropagation()
+    /* open an info/editing card */
+    this.props.target.upsert()
+  }
+
   render() {
     return (
       <div className={`contact-item ${this.state.requestState}`} onClick={this.clickHandler}>
         <div className="title">{this.props.title}</div>
         <div className="info">{this.props.uuid}</div>
         <div className="underline" ref={this.timerBarRef}></div>
+        <div className="more-info" onClick={this.handleMoreInfo}>···</div>
       </div>
     )
   }

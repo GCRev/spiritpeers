@@ -114,6 +114,10 @@
 }
 
 .form-button {
+  --bg-col: var(--turq);
+  --fg-col: white;
+  background-color: var(--bg-col);
+  color: white;
   width: 100%;
   border-radius: 3px;
   height: 50px;
@@ -127,13 +131,21 @@
 }
 
 .form-button:hover {
-  background-color: var(--d-turq);
+  --bg-col: var(--d-turq);
+}
+
+.form-button.cancel {
+  --bg-col: transparent;
+  color: var(--red);
+  border: 1px solid var(--red);
+}
+
+.form-button.cancel:hover {
+  filter: brightness(0.5) saturate(1.8);
 }
 
 .login-button {
   margin-top: 16px;
-  background-color: var(--turq);
-  color: var(--white);
 }
 
 .login-sign-up {
@@ -163,6 +175,7 @@ dd.invalid-reasons > p {
   width: 400px;
   filter: drop-shadow(0 0 8px rgba(0,0,0,0.3));
   padding: 4px;
+  z-index: 200;
 }
 
 .notification {
@@ -253,3 +266,88 @@ dd.invalid-reasons > p {
   transition: all 0.4s var(--ease-out), margin-top 0.2s 0.2s;
 }
 
+.blur {
+  filter: blur(4px);
+}
+
+.wrapper.blur {
+  pointer-events: none;
+}
+
+.overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.overlay > .panel {
+  background-color: var(--white);
+  padding: 8px;
+  box-shadow: var(--standard-box-shadow);
+}
+
+.overlay.overlay-enter > .panel {
+  transform: translate3d(0, -8px, 0);
+}
+
+.overlay.overlay-enter-active > .panel {
+  transform: translate3d(0, 0, 0);
+  transition: all 0.4s var(--ease-out);
+}
+
+.overlay.overlay-exit-active > .panel {
+  transform: translate3d(0, -8px, 0);
+  transition: all 0.4s var(--ease-out);
+}
+
+.overlay.overlay-enter {
+  opacity: 0;
+}
+
+.overlay.overlay-enter-active {
+  opacity: 1;
+  transition: all 0.4s var(--ease-out);
+}
+
+.overlay.overlay-exit-active {
+  opacity: 0;
+  transition: all 0.4s var(--ease-out);
+}
+
+.grid-form {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  grid-gap: 4px;
+  align-items: center;
+}
+
+.grid-form .form-label {
+  text-align: right;
+  margin-right: 4px;
+}
+
+.grid-form div.form-input {
+  display: flex;
+  align-items: center;
+}
+
+.flex-bar {
+  margin-top: 24px;
+  display: flex;
+  position: relative;
+  justify-content: stretch;
+  align-items: center;
+}
+
+.flex-bar > * {
+  margin: 0 2px;
+}
+
+.flex-bar > *:first-child {
+  margin-left: 0;
+}
+
+.flex-bar > *:last-child {
+  margin-right: 0;
+}

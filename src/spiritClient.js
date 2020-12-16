@@ -1,5 +1,6 @@
 import Evt from './Evt'
 import Config from './config.mjs'
+import OrderedObjectList from './orderedList'
 // import {v4 as uuidv4} from 'uuid'
 const ipcr = window.require('electron').ipcRenderer
 const fs = window.require('fs')
@@ -58,7 +59,7 @@ class Contact extends Evt {
       }
     })
 
-    this.log = []
+    this.log = new OrderedObjectList({keyName: 'ts'})
     if (params) {
       this.vaultToData(params)
     }
@@ -68,11 +69,34 @@ class Contact extends Evt {
     return this.displayName || this.username || this.uuid || "There's nothing here"
   }
 
+  getEditableProperties() {
+    return [
+      {
+        title: 'Username',
+        prop: 'username',
+        value: this.username
+      },
+      {
+        title: 'Display Name',
+        prop:'displayName',
+        value: this.displayName
+      },
+      {
+        title: 'Notes about this loser',
+        prop: 'notes',
+        value: this.notes
+      }
+    ]
+  }
+
   vaultToData(vaultData) {
     if (!vaultData) return
 
     const contact = vaultData 
     Object.assign(this, contact)
+    if (contact.log) {
+      this.log = new OrderedObjectList({keyName: 'ts'}, ...contact.log)
+    }
     this.privateKey = Buffer.from(contact.privateKey, 'base64')
     if (contact.publicKey) this.publicKey = Buffer.from(contact.publicKey, 'base64')
 
@@ -83,18 +107,27 @@ class Contact extends Evt {
   
   dataToVault() {
     const result = Object.assign({}, this)
+    result.log = this.log.all()
 
     result.privateKey = this.privateKey.toString('base64')
     if (this.publicKey) result.publicKey = this.publicKey.toString('base64')
     return result
   }
 
-  writeToLog(md, uuid) {
-    this.log.push([Date.now(), uuid || this.uuid, md])
-    if (this.log.length > LOG_LIMIT) {
-      this.log.shift()
+  writeToLog(md, uuid, ts=Date.now()) {
+    const messageResult = this.log.get(ts)
+    if (!messageResult.item) {
+      this.log.add({ts: ts, uuid: uuid || this.uuid, md: md})
+      if (this.log.length > LOG_LIMIT) {
+        this.log.remove(this.log.first().ts)
+      }
+      this.fire('message-logged', this)
+    } else {
+      messageResult.item.md = md
+      messageResult.item.edited = true
+      this.fire('message-edited', this)
     }
-    this.fire('message-logged', this)
+
   }
 
   conversationRequest() {
@@ -144,6 +177,39 @@ class Contact extends Evt {
     } catch (err) {
       /* uhh */
     }
+    return result
+  }
+
+  upsert() {
+    this.fire('upsert-contact', {existingContact: true, contact: this})
+    this.spiritClient.upsertContact(this.uuid)
+  }
+
+  cancelUpsert() {
+    this.fire('cancel-upsert', {contact: this})
+    this.spiritClient.cancelUpsertContact(this.uuid)
+  }
+
+  async saveUpsert(params) {
+    if (!params) return 
+
+    const editableProps = this.getEditableProperties()
+    const result = {}
+    for(const editable of editableProps) {
+      const currentValue = this[editable.prop]
+      const newEditable = params[editable.prop]
+      if (!newEditable) return
+      if (currentValue !== newEditable.value) {
+        if (!newEditable.value) {
+          delete this[editable.prop]
+        } else {
+          this[editable.prop] = newEditable.value
+          result[editable.prop] = newEditable.value
+        }
+      }
+    }
+    await this.spiritClient.confirmUpsertContact(this.uuid)
+    this.fire('save-upsert', {contact: this})
     return result
   }
 }
@@ -357,10 +423,10 @@ class SpiritClient extends Evt {
     }
   }
 
-  async getVaultFile() {
+  async getFile(fileName) {
     const dataPath  = await ipcr.invoke('get-env-path', 'data')
     const resolvedPath = path.resolve(dataPath)
-    const filePath = path.resolve(dataPath, './vault.sp2p')
+    const filePath = path.resolve(dataPath, `./${fileName}`)
     try {
       await fsp.access(filePath)
       this.data.foundResourceFile = true
@@ -369,6 +435,10 @@ class SpiritClient extends Evt {
       this.data.foundResourceFile = false
     }
     return filePath 
+  } 
+
+  async getVaultFile() {
+    return this.getFile('vault.sp2p')
   } 
 
   async loadVaultFile() {
@@ -531,14 +601,14 @@ class SpiritClient extends Evt {
           if (!contact) return 
           if (!contact.sharedSecret) return
 
-          let md = ''
+          let data = ''
           const iv = dataBuffer.slice(UUID_LEN + UUID_LEN, UUID_LEN + UUID_LEN + 16)
           const encMessage = dataBuffer.slice(UUID_LEN + UUID_LEN + 16)
           const decipher = crypto.createDecipheriv('aes-256-cbc', contact.sharedSecret.slice(0, 32), iv)
-          md += decipher.update(encMessage, null, 'utf8')
-          md += decipher.final('utf8') 
-          console.log(md)
-          handler.call(this, contact, md)
+          data += decipher.update(encMessage, null, 'utf8')
+          data += decipher.final('utf8') 
+          console.log(data)
+          handler.call(this, contact, data)
           return 
         }
       })
@@ -550,10 +620,15 @@ class SpiritClient extends Evt {
     Object.assign(contact, info)
   }
 
-  parseMessageReceived(contact, md) {
-    contact.writeToLog(md)
-    this.writeVaultFile()
-    this.fire('message-received', {source: contact, md: md})
+  parseMessageReceived(contact, data) {
+    try {
+      const rjson = JSON.parse(data)
+      contact.writeToLog(rjson.md, undefined, rjson.ts)
+      this.writeVaultFile()
+      this.fire('message-received', {source: contact, data: data})
+    } catch (err) {
+      /* do nothing */
+    }
   }
 
   parseInfoReceived(contact, info) {
@@ -562,7 +637,7 @@ class SpiritClient extends Evt {
       if (rjson.updateContact) {
         this.updateContact(contact, rjson.updateContact)
       }
-      this.fire('info-received', {source: contact, info: rjson})
+      this.fire('info-received', {source: contact, data: rjson})
     } catch (err) {
       /* do nothing */
     }
@@ -573,6 +648,10 @@ class SpiritClient extends Evt {
     if (!this.data.uuid) return 
     
     const targetContact = this.getContact(target)
+    if (targetContact.publicKey) {
+      this.fire('talk-to', {response: {}, target: targetContact})
+      return {}
+    }
 
     const result = await ipcr.invoke('talk-to', {
       url: `http://${SERVER_URL}/talkto`,
@@ -599,10 +678,14 @@ class SpiritClient extends Evt {
     return result
   }
 
-  async message(target, md) {
-    const result = await this.send('msg', target, md)
+  async message(target, md, ts=Date.now()) {
+    const data = {
+      md: md,
+      ts: ts 
+    }
+    const result = await this.send('msg', target, JSON.stringify(data))
     this.writeVaultFile()
-    this.fire('message-sent', {result: result, target: target, md: md})
+    this.fire('message-sent', {result: result, target: target, data: data})
     return result
   }
 
@@ -613,8 +696,9 @@ class SpiritClient extends Evt {
         username: this.data.username
       }
     }
-    this.fire('info-sent', {target: target, info: info})
-    return this.send('info', target, JSON.stringify(info))
+    const result = this.send('info', target, JSON.stringify(info))
+    this.fire('info-sent', {target: target, data: info})
+    return result
   }
 
   async send(prefix, target, md) {
@@ -706,6 +790,28 @@ class SpiritClient extends Evt {
 
   getTitle() {
     return this.data.displayName || this.data.username || this.data.uuid || "There's nothing here"
+  }
+  
+  upsertContact(uuid) {
+    if (!uuid) return
+    const existingContact = (uuid in this.data.contacts)
+    const contact = this.getContact(uuid)
+    this.fire('upsert-contact', {existingContact: existingContact, contact: contact})
+  }
+
+  cancelUpsertContact(uuid) {
+    if (!uuid) return
+    const contact = this.getContact(uuid)
+    if (!contact) return
+    this.fire('cancel-upsert-contact', {contact: contact})
+  }
+
+  async confirmUpsertContact(uuid) {
+    if (!uuid) return
+    const contact = this.getContact(uuid)
+    if (!contact) return
+    await this.writeVaultFile()
+    this.fire('confirm-upsert-contact', {contact: contact})
   }
   
 }

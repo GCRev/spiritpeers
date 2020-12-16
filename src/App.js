@@ -1,8 +1,8 @@
-import './App.css';
-import './index.css';
-import React from 'react';
-import LoginDisplay from './Login.js';
-import ChatMainDisplay from './ChatMain/ChatMain.js';
+import './App.css'
+import './index.css'
+import React from 'react'
+import LoginDisplay from './Login.js'
+import ChatMainDisplay from './ChatMain/ChatMain.js'
 import { TransitionGroup, CSSTransition } from 'react-transition-group'
 
 class NotificationDisplay extends React.Component {

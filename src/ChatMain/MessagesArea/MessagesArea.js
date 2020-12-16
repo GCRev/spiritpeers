@@ -6,11 +6,20 @@ class MessageDisplay extends React.Component {
     this.state = {}
   }
 
+  formatDate() {
+    const date = new Date(this.props.ts)
+    return `${date.getHours()}:${date.getMinutes()}`
+  }
+
   render() {
     return (
       <message is="div" class={this.props.isTarget ? 'from-target' : 'from-source'}>
-        <div className="date">{new Date(this.props.ts).toString()}</div>
-        <div className="content"><span className="title">{this.props.title}</span> {this.props.md || ''}</div>
+        <div className="date">{this.formatDate()}</div>
+        <div className="title">{this.props.title}</div> 
+        <div className="content">{this.props.md || ''}</div>
+        {this.props.edited &&
+          <div className="edit-indicator">EDITED</div>
+        }
       </message>
     )
   }
@@ -55,31 +64,30 @@ class MessageHistoryDisplay extends React.Component {
   }
 
   render() {
-    const headerText = this.state.target ? this.state.target.getTitle() : 'ass'
     let messages = []
     if (this.state.target) {
       if (!this.state.reversed) {
-        messages = [...this.state.target.log]
+        messages = [...this.state.target.log.all()]
       } else {
-        messages = [...this.state.target.log].reverse()
+        messages = [...this.state.target.log.all()].reverse()
       }
     }
     return (
       <div className="message-history">
-        <div className="title">{headerText}</div>
         {!!messages.length &&
           messages.map((entry, index) => {
-            const title = entry[1] === this.state.target.uuid ?
+            const title = entry.uuid === this.state.target.uuid ?
               this.state.target.getTitle() :
               this.props.spiritClient.getTitle()
             return (
               <MessageDisplay
                 key={`log-index-${index}`}
-                isTarget={entry[1] === this.state.target.uuid}
-                ts={entry[0]}
-                uuid={entry[1]}
-                md={entry[2]}
+                isTarget={entry.uuid === this.state.target.uuid}
+                ts={entry.ts}
+                uuid={entry.uuid}
+                md={entry.md}
                 title={title}
+                edited={entry.edited}
               ></MessageDisplay>
             )
           })
@@ -191,16 +199,36 @@ class ChatBoxDisplay extends React.Component {
 class MessageAreaDisplay extends React.Component {
   constructor(data) {
     super()
+    this.state = {}
+  }
+
+  handleTalkTo(args) {
+    this.setState({
+      target: args.target
+    })
+  }
+
+  componentDidMount() {
+    this.props.spiritClient.on('talk-to', this.handleTalkTo, this)
+  }
+
+  componentWillUnmount() {
+    this.props.spiritClient.un('talk-to', this.handleTalkTo, this)
   }
 
   render() {
+    const headerText = this.state.target ? this.state.target.getTitle() : 'ass'
     return (
       <div id="message-area" className="visual-test">
-        <MessageHistoryDisplay spiritClient={this.props.spiritClient} reversed={true}></MessageHistoryDisplay>
+        <div className="title">{headerText}</div>
+        <MessageHistoryDisplay spiritClient={this.props.spiritClient} reversed={false}></MessageHistoryDisplay>
         <ChatBoxDisplay spiritClient={this.props.spiritClient}></ChatBoxDisplay>
       </div>
     )
   }
 }
 
-export default MessageAreaDisplay
+export { 
+  MessageAreaDisplay as default,
+  ChatBoxDisplay
+}
