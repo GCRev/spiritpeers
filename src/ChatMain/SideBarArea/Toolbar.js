@@ -7,7 +7,11 @@ class ToolbarDisplay extends React.Component {
 
   render() {
     return (
-      <div id="main-toolbar" className="visual-test">Toolbar goes here</div>
+      <div
+        id="main-toolbar"
+        className="flex-center visual-test">
+          {this.props.children}
+      </div>
     )
   }
 }

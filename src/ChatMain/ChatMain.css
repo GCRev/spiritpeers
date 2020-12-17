@@ -3,7 +3,7 @@
   height: 100%;
 }
 
-#chat-main > .wrapper {
+#chat-main>.wrapper {
   width: 100%;
   height: 100%;
   display: grid;
@@ -35,7 +35,7 @@
 #chat-box {
   grid-area: 2 / 3 / 3 / 3;
   max-height: 100%;
-  overflow:auto;
+  overflow: auto;
 }
 
 #main-toolbar {
@@ -43,10 +43,26 @@
   background-color: var(--slt-grey);
   border-top: 1px solid var(--grey);
   padding: 4px;
+  justify-content: flex-start;
+}
+
+.toolbar-item {
+  line-height: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  position: relative;
+}
+
+.toolbar-item:hover {
+  background-color: var(--grey);
 }
 
 .visual-test {
-  /* border: 1px dashed var(--turq); */
+  border: 1px dashed var(--turq);
 }
 
 .contact-item {
@@ -158,7 +174,7 @@ message.from-source .title {
   background-color: var(--slt-grey);
 }
 
-message.from-target .title{
+message.from-target .title {
   background-color: var(--turq);
   color: var(--white);
 }
@@ -176,7 +192,7 @@ message .content {
   overflow-y: auto;
 }
 
-#message-area > .title {
+#message-area>.title {
   font-size: 16px;
   height: var(--contact-item-height);
   position: relative;
@@ -187,7 +203,7 @@ message .content {
   margin-bottom: 2px;
 }
 
-#message-area > .title::after {
+#message-area>.title::after {
   content: '';
   display: block;
   position: absolute;
@@ -203,7 +219,7 @@ message .content {
   padding: 16px;
 }
 
-.contact-edit .title{
+.contact-edit .title {
   font-size: 16px;
   font-weight: bold;
   margin-bottom: 20px;

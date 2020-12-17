@@ -3,6 +3,7 @@ import '../index'
 import './ChatMain.css'
 import MessageAreaDisplay from './MessagesArea/MessagesArea'
 import ToolbarDisplay from './SideBarArea/Toolbar'
+import ToolbarItemDisplay from './SideBarArea/ToolbarItem'
 import ConversationsDisplay from './SideBarArea/Conversations'
 import ContactEditDisplay from './ContactEdit'
 import Overlay from '../Overlay'
@@ -46,7 +47,11 @@ class ChatMainDisplay extends React.Component {
         <div className={`wrapper ${!!this.state.showOverlay ? 'blur' : ''}`}>
           <ConversationsDisplay spiritClient={this.props.spiritClient}></ConversationsDisplay>
           <MessageAreaDisplay spiritClient={this.props.spiritClient}></MessageAreaDisplay>
-          <ToolbarDisplay></ToolbarDisplay>
+          <ToolbarDisplay>
+            <ToolbarItemDisplay clickEvent={() => console.log('test')}></ToolbarItemDisplay>
+            <ToolbarItemDisplay></ToolbarItemDisplay>
+            <ToolbarItemDisplay></ToolbarItemDisplay>
+          </ToolbarDisplay>
         </div>
         <Overlay
           in={this.state.showOverlay}
