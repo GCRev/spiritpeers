@@ -18,12 +18,14 @@ class ConversationsDisplay extends React.Component {
   componentDidMount() {
     this.props.spiritClient.on('set-contacts', this.setContacts, this)
     this.props.spiritClient.on('create-contact', this.setContacts, this)
+    this.props.spiritClient.on('delete-contact', this.setContacts, this)
     this.props.spiritClient.on('conversation-request', this.handleConversationRequest, this)
   }
 
   componentWillUnmount() {
     this.props.spiritClient.un('set-contacts', this.setContacts, this)
     this.props.spiritClient.un('create-contact', this.setContacts, this)
+    this.props.spiritClient.un('delete-contact', this.setContacts, this)
     this.props.spiritClient.un('conversation-request', this.handleConversationRequest, this)
   }
 
@@ -36,9 +38,11 @@ class ConversationsDisplay extends React.Component {
   render() {
     const contactList = this.state.contactList
     return (
-      <div id="conversations" className="visual-test">
+      <div id="conversations">
         {
-          !contactList.length ? 'No Contacts' :
+          !contactList.length ? (
+            <div className="contact-item flex-center disabled">No Contacts</div>
+            ) :
             contactList.map((contact, index) => {
               return (
                 <ContactDisplay

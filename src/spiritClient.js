@@ -140,7 +140,7 @@ class Contact extends Evt {
       await this.spiritClient.talkTo(this.uuid)
       this.state = ''
       return true
-    } else {
+    } else if (this.state !== 'pending') {
       if (!isNaN(this.timeoutId)) {
         clearTimeout(this.timeoutId)
         this.timeoutId = undefined
@@ -211,6 +211,11 @@ class Contact extends Evt {
     await this.spiritClient.confirmUpsertContact(this.uuid)
     this.fire('save-upsert', {contact: this})
     return result
+  }
+
+  async deleteContact() {
+    await this.spiritClient.deleteContact(this.uuid)
+    return this
   }
 }
 
@@ -793,10 +798,11 @@ class SpiritClient extends Evt {
   }
   
   upsertContact(uuid) {
-    if (!uuid) return
+    if (!uuid) uuid = this.generateHilariousRandomIdentifier()
     const existingContact = (uuid in this.data.contacts)
     const contact = this.getContact(uuid)
     this.fire('upsert-contact', {existingContact: existingContact, contact: contact})
+    return contact
   }
 
   cancelUpsertContact(uuid) {
@@ -804,6 +810,7 @@ class SpiritClient extends Evt {
     const contact = this.getContact(uuid)
     if (!contact) return
     this.fire('cancel-upsert-contact', {contact: contact})
+    return contact
   }
 
   async confirmUpsertContact(uuid) {
@@ -812,6 +819,17 @@ class SpiritClient extends Evt {
     if (!contact) return
     await this.writeVaultFile()
     this.fire('confirm-upsert-contact', {contact: contact})
+    return contact
+  }
+
+  async deleteContact(uuid) {
+    if (!uuid) return
+    const contact = this.getContact(uuid)
+    if (!contact) return
+    delete this.data.contacts[uuid]
+    await this.writeVaultFile()
+    this.fire('delete-contact', {contact: contact})
+    return contact
   }
   
 }

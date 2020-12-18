@@ -1,11 +1,17 @@
 import React from 'react'
+import { Icon, ToolbarDisplay, GridForm } from '../Components'
 
-class ContactEditDisplay extends React.PureComponent {
+class ContactEditDisplay extends React.Component {
   constructor(data) {
     super()
-    this.formRef = React.createRef()
-    this.cancelHandler = this.cancelHandler.bind(this)
-    this.saveHandler = this.saveHandler.bind(this)
+    this.handleOnChange = this.handleOnChange.bind(this)
+    this.handleCancel = this.handleCancel.bind(this)
+    this.handleSave = this.handleSave.bind(this)
+    this.handleDelete = this.handleDelete.bind(this)
+    this.state = {
+      contact: data.contact
+    }
+    this.formProps = data.contact.getEditableProperties()
   }
 
   componentDidMount() {
@@ -14,63 +20,60 @@ class ContactEditDisplay extends React.PureComponent {
   componentWillUnmount() {
   }
 
-  cancelHandler() {
+  handleDelete() {
+    this.props.contact.deleteContact()
+  }
+
+  handleCancel() {
     this.props.contact.cancelUpsert()
   }
 
-  saveHandler() {
-    const inputs = this.formRef.current.querySelectorAll('input')
+  handleSave() {
     const params = {}
-    const editableProps = this.props.contact.getEditableProperties()
-
-    /* 
-     * this is shitty code, but they are 1-to-1 mapped so they should never
-     * have a misalignment issue
-     */
-    for (let a = 0; a < inputs.length; a++) {
-      const input = inputs[a]
-      const editableProp = editableProps[a]
-      const result = {
-        prop: editableProp.prop,
-        value: input.value
-      }
-      params[editableProp.prop] = result
+    
+    for (const formProp of this.formProps) {
+      params[formProp.prop] = formProp 
     }
+
     this.props.contact.saveUpsert(params)
+  }
+  
+  handleOnChange(prop, value) {
+    try {
+      this.formProps.find(item => {return item.prop === prop}).value = value
+    } catch (err) {
+      /* do nothing */
+    }
   }
 
   render() {
     return (
       <div className="contact-edit">
         <div className="title">{`${this.props.existingContact ? 'Edit' : 'New'} - ${this.props.contact.getTitle()}`}</div>
-        <form ref={this.formRef} className="grid-form">
-          <label 
-            className="form-label"
-          >UUID: </label>
-          <div
-            className="form-input disabled" 
-          >{this.props.contact.uuid}</div>
-          {
-            this.props.contact.getEditableProperties().map((item, index) => {
-              return (
-                <React.Fragment key={`ced-lbl-${index}`}> 
-                  <label 
-                    className="form-label"
-                  >{`${item.title}:  `}</label>
-                  <input 
-                    className="form-input" 
-                    type="text"
-                    defaultValue={item.value}
-                  ></input>
-                </React.Fragment> 
-              )
-            })
-          }
-        </form>
-        <div className="flex-bar">
-          <button className="form-button cancel" onClick={this.cancelHandler}>CANCEL</button>
-          <button className="form-button" onClick={this.saveHandler}>SAVE</button>
-        </div>
+        <GridForm
+          formFields={[{
+            title: 'UUID',
+            prop: 'uuid',
+            value: this.state.contact.uuid,
+            disabled: true
+          }, ...this.state.contact.getEditableProperties()]}
+          onChange={this.handleOnChange}
+        ></GridForm>
+        <ToolbarDisplay>
+          <div 
+            noflex="true"
+            className="form-button square cancel"
+            onClick={this.handleDelete}
+          >
+            <Icon
+              className="outline-only red"
+              iconSize={32}
+              url="./icons_proc/trash.svg#trash"
+            ></Icon>
+          </div>
+          <button className="form-button cancel" onClick={this.props.existingContact ? this.handleCancel : this.handleDelete}>CANCEL</button>
+          <button className="form-button" onClick={this.handleSave}>SAVE</button>
+        </ToolbarDisplay>
       </div>
     )
   }

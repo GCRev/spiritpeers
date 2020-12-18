@@ -2,8 +2,8 @@ const fs = require('fs')
 const {Transform} = require('stream')
 // remove all the inline style information from all elements in the icon files
 
-const inputPathName = './src/icons_raw/'
-const outputPathName = './src/icons_proc/'
+const inputPathName = './public/icons_raw/'
+const outputPathName = './public/icons_proc/'
 
 class StyleRemove extends Transform {
   constructor() {

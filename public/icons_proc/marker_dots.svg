@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 7 7" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" >
+    <g id="circle" transform="matrix(0.663113,0,0,0.663113,0.51599,0.51599)">
+        <circle cx="4.5" cy="4.5" r="4.5"/>
+    </g>
+    <g id="square" transform="matrix(0.663113,0,0,0.663113,0.51599,0.51599)">
+        <rect x="0" y="0" width="9" height="9"/>
+    </g>
+    <g id="rhombus" transform="matrix(0.855607,0,0,0.663113,-0.350231,0.51599)">
+        <path d="M4.5,0L1.011,4.5L4.5,9L7.989,4.5L4.5,0Z"/>
+    </g>
+</svg>

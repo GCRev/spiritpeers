@@ -184,7 +184,7 @@ class ChatBoxDisplay extends React.Component {
 
   render() {
     return (
-      <div id="chat-box-area" className="visual-test">
+      <div id="chat-box-area">
         <div 
           ref={this.chatBoxRef}
           id="chat-box"
@@ -219,7 +219,7 @@ class MessageAreaDisplay extends React.Component {
   render() {
     const headerText = this.state.target ? this.state.target.getTitle() : 'ass'
     return (
-      <div id="message-area" className="visual-test">
+      <div id="message-area">
         <div className="title">{headerText}</div>
         <MessageHistoryDisplay spiritClient={this.props.spiritClient} reversed={false}></MessageHistoryDisplay>
         <ChatBoxDisplay spiritClient={this.props.spiritClient}></ChatBoxDisplay>
