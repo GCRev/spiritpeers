@@ -72,6 +72,11 @@ class Contact extends Evt {
   getEditableProperties() {
     return [
       {
+        title: 'UUID',
+        prop: 'uuid',
+        value: this.uuid
+      },
+      {
         title: 'Username',
         prop: 'username',
         value: this.username
@@ -170,10 +175,9 @@ class Contact extends Evt {
   async message(md) {
     let result = {}
 
-    this.writeToLog(md, this.spiritClient.data.uuid)
-
     try {
       result = await this.spiritClient.message(this.uuid, md)
+      this.writeToLog(md, this.spiritClient.data.uuid)
     } catch (err) {
       /* uhh */
     }
@@ -208,7 +212,7 @@ class Contact extends Evt {
         }
       }
     }
-    await this.spiritClient.confirmUpsertContact(this.uuid)
+    await this.spiritClient.confirmUpsertContact(this)
     this.fire('save-upsert', {contact: this})
     return result
   }
@@ -281,6 +285,28 @@ class SpiritClient extends Evt {
       this.data.hash = hashBuffer
     }
     this.vault.hash = this.data.hash.toString('hex')
+  }
+
+  async saveSettings(params) {
+    if (!params) {
+      this.fire('save-settings', {})
+      return
+    }
+
+    for (const key in params) {
+      const prop = params[key]
+      const setter = `set${prop.prop[0].toUpperCase() + prop.prop.slice(1)}` 
+      if (setter in this && 
+        !prop.disabled &&
+        prop.value !== this[prop.prop]) {
+        this[setter].call(this, prop.value)
+      } else if (prop.prop in this &&
+        typeof this[prop.prop] === 'function') {
+        this[prop.prop].call(this, prop.value)
+      }
+    }
+    await this.writeVaultFile()
+    this.fire('save-settings', params)
   }
 
   validateUsername(username) {
@@ -366,7 +392,7 @@ class SpiritClient extends Evt {
     return output
   }
 
-  getContact(uuid) {
+  getContact(uuid, doNotStore) {
     if (!uuid) return
     if (uuid === this.data.uuid) return 
 
@@ -379,9 +405,12 @@ class SpiritClient extends Evt {
       result.privateKey = secret.getPrivateKey()
       result.uuid = uuid
       result.secret = secret
-      this.data.contacts[uuid] = result
-      this.fire('create-contact', result)
-      this.writeVaultFile()
+
+      if (!doNotStore) {
+        this.data.contacts[uuid] = result
+        this.writeVaultFile()
+        this.fire('create-contact', result)
+      }
     } else {
       result = this.data.contacts[uuid]
     }
@@ -800,31 +829,36 @@ class SpiritClient extends Evt {
   upsertContact(uuid) {
     if (!uuid) uuid = this.generateHilariousRandomIdentifier()
     const existingContact = (uuid in this.data.contacts)
-    const contact = this.getContact(uuid)
+    const contact = this.getContact(uuid, true)
     this.fire('upsert-contact', {existingContact: existingContact, contact: contact})
     return contact
   }
 
   cancelUpsertContact(uuid) {
     if (!uuid) return
-    const contact = this.getContact(uuid)
+    const contact = this.getContact(uuid, true)
     if (!contact) return
     this.fire('cancel-upsert-contact', {contact: contact})
     return contact
   }
 
-  async confirmUpsertContact(uuid) {
-    if (!uuid) return
-    const contact = this.getContact(uuid)
-    if (!contact) return
+  async confirmUpsertContact(contact) {
+    let createdContact = false
+    if (!(contact.uuid in this.data.contacts)) {
+      this.data.contacts[contact.uuid] = contact
+      createdContact = true
+    }
     await this.writeVaultFile()
     this.fire('confirm-upsert-contact', {contact: contact})
+    if (createdContact) {
+      this.fire('create-contact', {contact: contact})
+    }
     return contact
   }
 
   async deleteContact(uuid) {
     if (!uuid) return
-    const contact = this.getContact(uuid)
+    const contact = this.getContact(uuid, true)
     if (!contact) return
     delete this.data.contacts[uuid]
     await this.writeVaultFile()

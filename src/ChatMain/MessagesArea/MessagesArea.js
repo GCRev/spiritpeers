@@ -152,10 +152,12 @@ class ChatBoxDisplay extends React.Component {
     case 'Enter':
       evt.preventDefault()
       if (this.state.target) {
+        this.setState({disabled: true})
         const result = await this.state.target.message(this.chatBoxRef.current.innerText)
         if (result.offline) {
           /* do something different? */
         }
+        this.setState({disabled: false})
         this.chatBoxRef.current.innerText = ''
       }
       break
@@ -188,9 +190,10 @@ class ChatBoxDisplay extends React.Component {
         <div 
           ref={this.chatBoxRef}
           id="chat-box"
-          className="form-input" 
+          className={`form-input ${this.state.disabled ? 'disabled' : ''}`}
           onKeyDown={this.chatKeyupHandler} 
-          contentEditable='true'></div>
+          contentEditable='true'
+        ></div>
       </div>
     )
   }

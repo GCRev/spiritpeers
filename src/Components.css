@@ -158,7 +158,7 @@
   --fg-col: white;
   background-color: var(--bg-col);
   color: white;
-  flex: 1;
+  flex: 1 1 auto;
   border-radius: 3px;
   height: 50px;
   border: none;

@@ -4,6 +4,7 @@ import './ChatMain.css'
 import MessageAreaDisplay from './MessagesArea/MessagesArea'
 import ConversationsDisplay from './SideBarArea/Conversations'
 import ContactEditDisplay from './ContactEdit'
+import SettingsDisplay from './Settings'
 import { ToolbarDisplay, Overlay, Icon } from '../Components'
 import React from 'react'
 
@@ -12,31 +13,42 @@ class ChatMainDisplay extends React.Component {
     super()
     this.state = {}
     this.handleInsertContact = this.handleInsertContact.bind(this)
+    this.handleOpenSettings = this.handleOpenSettings.bind(this)
+    this.hideOverlay = this.hideOverlay.bind(this)
   }
 
   componentDidMount() {
     this.props.spiritClient.on('upsert-contact', this.upsertContact, this)
-    this.props.spiritClient.on('cancel-upsert-contact', this.cancelUpsertContact, this)
-    this.props.spiritClient.on('confirm-upsert-contact', this.cancelUpsertContact, this)
-    this.props.spiritClient.on('delete-contact', this.cancelUpsertContact, this)
+    this.props.spiritClient.on('cancel-upsert-contact', this.hideOverlay, this)
+    this.props.spiritClient.on('confirm-upsert-contact', this.hideOverlay, this)
+    this.props.spiritClient.on('delete-contact', this.hideOverlay, this)
+    this.props.spiritClient.on('save-settings', this.hideOverlay, this)
   }
 
   componentWillUnmount() {
     this.props.spiritClient.un('upsert-contact', this.upsertContact, this)
-    this.props.spiritClient.un('cancel-upsert-contact', this.cancelUpsertContact, this)
-    this.props.spiritClient.un('confirm-upsert-contact', this.cancelUpsertContact, this)
-    this.props.spiritClient.un('delete-contact', this.cancelUpsertContact, this)
+    this.props.spiritClient.un('cancel-upsert-contact', this.hideOverlay, this)
+    this.props.spiritClient.un('confirm-upsert-contact', this.hideOverlay, this)
+    this.props.spiritClient.un('delete-contact', this.hideOverlay, this)
+    this.props.spiritClient.un('save-settings', this.hideOverlay, this)
   }
 
   upsertContact(params) {
     this.setState({
       showOverlay: true,
-      upsertingContact: params.contact,
-      existingContact: params.existingContact
+      renderOverlayContent: () => {
+        return (
+          <ContactEditDisplay
+            spiritClient={this.props.spiritClient}
+            contact={params.contact}
+            existingContact={params.existingContact}
+          ></ContactEditDisplay>
+        )
+      }
     })
   }
 
-  cancelUpsertContact() {
+  hideOverlay() {
     this.setState({
       showOverlay: false
     })
@@ -44,6 +56,19 @@ class ChatMainDisplay extends React.Component {
 
   handleInsertContact() {
     this.props.spiritClient.upsertContact()
+  }
+
+  handleOpenSettings() {
+    this.setState({
+      showOverlay: true,
+      renderOverlayContent: () => {
+        return (
+          <SettingsDisplay
+            spiritClient={this.props.spiritClient}
+          ></SettingsDisplay>
+        )
+      }
+    })
   }
 
   render() {
@@ -63,16 +88,23 @@ class ChatMainDisplay extends React.Component {
                 url="./icons_proc/contact_add.svg#contact_add"
               ></Icon>
             </div>
+            <div 
+              className="toolbar-button outline-only circle"
+              onClick={this.handleOpenSettings}
+            >
+              <Icon 
+                className="outline-only"
+                iconSize={32}
+                url="./icons_proc/gear.svg#gear"
+              ></Icon>
+            </div>
           </ToolbarDisplay>
         </div>
         <Overlay
           in={this.state.showOverlay}
+          onClose={this.hideOverlay}
         >
-          <ContactEditDisplay
-            spiritClient={this.props.spiritClient}
-            contact={this.state.upsertingContact}
-            existingContact={this.state.existingContact}
-          ></ContactEditDisplay>
+          {this.state.renderOverlayContent && this.state.renderOverlayContent()}
         </Overlay>
       </div>
     )

@@ -22,25 +22,25 @@ class StyleRemove extends Transform {
   _transform(chunk, enc, callback) {
     if (chunk) {
       for (let a = 0; a < chunk.length; a++) {
-        const carCode = chunk[a]
-        let car = String.fromCharCode(carCode)
+        const charCode = chunk[a]
+        let char = String.fromCharCode(charCode)
         if (this.checkBuffer()) {
           this.passedStyle = true
           // remove these characters from the buffer
           this.buffer.splice(-5, 5)
         }
         if (!this.passedStyle) {
-          this.buffer.push(carCode)
+          this.buffer.push(charCode)
         } else if (!this.quoteCar) {
           // check opening quote and store it for a
           // match later
-          if (car === "'" || car === '"') {
-            this.quoteCar = car
+          if (char === "'" || char === '"') {
+            this.quoteCar = char
           }
         } else if (this.quoteCar) {
           // if quoteCar has been assigned then 
           // only reset after a match has been found
-          if (car === this.quoteCar) {
+          if (char === this.quoteCar) {
             this.quoteCar = undefined
             this.passedStyle = false
           }

@@ -19,7 +19,11 @@ class Overlay extends React.Component {
       >
         <div className="overlay frame-absolute" ref={this.overlayLayerRef}>
           <div className="panel">
-            {this.props.children}
+            {
+              React.Children.map(this.props.children, child => {
+                return React.cloneElement(child, {onClose: this.props.onClose})
+              })
+            }
           </div>
         </div>
       </CSSTransition>
@@ -89,8 +93,8 @@ class GridFormRow extends React.Component {
   }
 
   handleOnChange(evt) {
-    if (!this.props.handleOnChange) return
-    this.props.handleOnChange(evt.target.value)
+    if (!this.props.onChange) return
+    this.props.onChange(evt.target.value)
   }
 
   render() {
@@ -98,18 +102,24 @@ class GridFormRow extends React.Component {
       <React.Fragment> 
         <label 
           className="form-label"
-        >{`${this.props.title}:  `}</label>
-        { this.props.disabled ? 
+        >{`${this.props.title ? this.props.title + ':' : ''}  `}</label>
+        { 
+          React.Children.count(this.props.children) ? 
+          (
+            React.Children.only(this.props.children)
+          )
+          :
+          (this.props.disabled ? 
           <div
             className="form-input disabled" 
           >{this.props.defaultValue || this.props.value}</div>
           :
           <input 
             className="form-input" 
-            type="text"
+            type={this.props.inputType || "text" }
             defaultValue={this.props.defaultValue || this.props.value}
             onChange={this.handleOnChange}
-          ></input>
+          ></input>)
         }
       </React.Fragment> 
     )
@@ -132,14 +142,27 @@ class GridForm extends React.Component {
     return ( 
       <form className="grid-form">
         {
+          !!this.props.formFields && 
           this.props.formFields.map((item, index) => {
             return (
               <GridFormRow
                 key={`item-${item.prop}`}
                 {...item}
-                handleOnChange={value => this.onChange(item.prop, value)}
+                onChange={value => this.onChange(item.prop, value)}
               ></GridFormRow>
             )
+          })
+        }
+        {
+          !!React.Children.count(this.props.children) &&
+          React.Children.map(this.props.children, (child, index) => {
+            return (
+              <GridFormRow
+                key={`item-gen-${index}`}
+                title={child.props.title}
+                onChange={value => this.onChange(child.props.prop, value)}
+              >{child}</GridFormRow>
+            ) 
           })
         }
       </form>

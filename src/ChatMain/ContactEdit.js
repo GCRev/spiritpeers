@@ -47,16 +47,12 @@ class ContactEditDisplay extends React.Component {
   }
 
   render() {
+    this.formProps.find(item => {return item.prop === 'uuid'}).disabled = !!this.props.existingContact
     return (
       <div className="contact-edit">
         <div className="title">{`${this.props.existingContact ? 'Edit' : 'New'} - ${this.props.contact.getTitle()}`}</div>
         <GridForm
-          formFields={[{
-            title: 'UUID',
-            prop: 'uuid',
-            value: this.state.contact.uuid,
-            disabled: true
-          }, ...this.state.contact.getEditableProperties()]}
+          formFields={this.formProps}
           onChange={this.handleOnChange}
         ></GridForm>
         <ToolbarDisplay>
