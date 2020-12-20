@@ -58,7 +58,7 @@ class SettingsDisplay extends React.Component {
           formFields={this.formProps}
           onChange={this.handleOnChange}
         >
-          <div title="Clear Logs" className="form-button cancel" onClick={this.handleCancel}>CLEAR LOGS</div>
+          <button title="Clear Logs" className="form-button cancel" onClick={this.handleCancel}>CLEAR LOGS</button>
         </GridForm>
         <ToolbarDisplay>
           <button className="form-button cancel" onClick={this.handleCancel}>CANCEL</button>

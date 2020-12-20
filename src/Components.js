@@ -139,8 +139,13 @@ class GridForm extends React.Component {
   }
 
   render() {
+    /* 
+     * we cannot use <form> here because putting buttons in there
+     * will attempt to submit the form on click. This is unwanted
+     * behavior that sucks and confused me for like three hours 
+     */
     return ( 
-      <form className="grid-form">
+      <div className="grid-form">
         {
           !!this.props.formFields && 
           this.props.formFields.map((item, index) => {
@@ -165,7 +170,7 @@ class GridForm extends React.Component {
             ) 
           })
         }
-      </form>
+      </div>
     )
   }
 }
