@@ -22,7 +22,9 @@ class Overlay extends React.Component {
           <div className="panel">
             {
               React.Children.map(this.props.children, child => {
-                return React.cloneElement(child, { onClose: this.props.onClose })
+                if (React.isValidElement(child)) {
+                  return React.cloneElement(child, { onClose: this.props.onClose })
+                }
               })
             }
           </div>
@@ -59,13 +61,15 @@ class ToolbarDisplay extends React.Component {
         id={this.props.id}
         className="toolbar flex-bar">
         {React.Children.map(this.props.children, child => {
-          return (
-            <ToolbarItemDisplay
-              noflex={child.props.noflex}
-            >
-              {React.cloneElement(child)}
-            </ToolbarItemDisplay>
-          )
+          if (React.isValidElement(child)) {
+            return (
+              <ToolbarItemDisplay
+                noflex={child.props.noflex}
+              >
+                {React.cloneElement(child)}
+              </ToolbarItemDisplay>
+            )
+          }
         })}
       </div>
     )
@@ -91,11 +95,16 @@ class GridFormRow extends React.Component {
   constructor() {
     super()
     this.handleOnChange = this.handleOnChange.bind(this)
+    this.handleOnCopy = this.handleOnCopy.bind(this)
   }
 
   handleOnChange(evt) {
     if (!this.props.onChange) return
     this.props.onChange(evt.target.value)
+  }
+
+  async handleOnCopy() {
+    await navigator.clipboard.writeText(this.props.value || this.props.defaultValue)
   }
 
   render() {
@@ -112,13 +121,24 @@ class GridFormRow extends React.Component {
             :
             (this.props.disabled ?
               <div
-                className="form-input disabled"
-              >{this.props.defaultValue || this.props.value}</div>
+                className={`form-input disabled ${this.props.copiable ? 'copiable' : ''}`}
+                onClick={this.props.copiable ? this.handleOnCopy : undefined}
+              >
+                {this.props.value || this.props.defaultValue}
+                {
+                  !!this.props.copiable &&
+                  <Icon
+                    className="outline-only copy-icon"
+                    iconSize={32}
+                    url="./icons_proc/copy.svg#copy"
+                  ></Icon>
+                }
+              </div>
               :
               <input
                 className="form-input"
                 type={this.props.inputType || "text"}
-                defaultValue={this.props.defaultValue || this.props.value}
+                defaultValue={this.props.value || this.props.defaultValue}
                 onChange={this.handleOnChange}
               ></input>)
         }
@@ -178,46 +198,11 @@ class GridForm extends React.Component {
   }
 }
 
-class UserInfo extends React.Component {
-  constructor(data) {
-    super()
-    this.state = {
-      copied: false
-    }
-    this.uuid = data.spiritClient.data.uuid
-    this.username = data.spiritClient.data.username
-  }
-
-  copyToClipBoard() {
-    var self = this
-    navigator.clipboard.writeText(this.uuid).then(function () {
-      self.setState({
-        copied: true
-      })
-      self.render()
-    }, function (err) { })
-  }
-
-  render() {
-    return (
-      <div
-        id="user-name"
-        className="user-name"
-        title={this.state.copied ? "Copied" : "Click to copy ID"}
-        onClick={() => this.copyToClipBoard.call(this, this.uuid)}
-      >
-        {this.username}
-      </div>
-    )
-  }
-}
-
 export {
   Overlay,
   ToolbarDisplay,
   ToolbarItemDisplay,
   Icon,
   GridFormRow,
-  GridForm,
-  UserInfo
+  GridForm
 }

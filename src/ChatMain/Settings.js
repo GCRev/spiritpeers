@@ -14,12 +14,14 @@ class SettingsDisplay extends React.Component {
         title: 'UUID',
         prop: 'uuid',
         value: data.spiritClient.data.uuid,
+        copiable: true,
         disabled: true
       },
       {
         title: 'Username',
         prop: 'username',
         value: data.spiritClient.data.username,
+        copiable: true,
         disabled: true
       },
       {

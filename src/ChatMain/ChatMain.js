@@ -5,8 +5,45 @@ import MessageAreaDisplay from './MessagesArea/MessagesArea'
 import ConversationsDisplay from './SideBarArea/Conversations'
 import ContactEditDisplay from './ContactEdit'
 import SettingsDisplay from './Settings'
-import { ToolbarDisplay, Overlay, Icon, UserInfo } from '../Components'
+import { ToolbarDisplay, Overlay, Icon } from '../Components'
 import React from 'react'
+
+class UserInfo extends React.Component {
+  constructor(data) {
+    super()
+    this.state = {
+      copied: false
+    }
+    this.uuid = data.spiritClient.data.uuid
+    this.username = data.spiritClient.data.username
+  }
+
+  async copyToClipBoard() {
+    await navigator.clipboard.writeText(this.uuid)
+    this.setState({
+      copied: true
+    })
+    this.render()
+  }
+
+  render() {
+    return (
+      <div
+        id="user-name"
+        className="user-name copiable"
+        title={this.state.copied ? "Copied" : "Click to copy ID"}
+        onClick={() => this.copyToClipBoard.call(this, this.uuid)}
+      >
+        {this.username}
+        <Icon
+          className="outline-only copy-icon"
+          iconSize={32}
+          url="./icons_proc/copy.svg#copy"
+        ></Icon>
+      </div>
+    )
+  }
+}
 
 class ChatMainDisplay extends React.Component {
   constructor(data) {
@@ -87,7 +124,7 @@ class ChatMainDisplay extends React.Component {
             <div
               className="toolbar-button outline-only circle"
               onClick={this.handleInsertContact}
-              noflex
+              noflex="true"
             >
               <Icon
                 className="outline-only"
@@ -98,7 +135,7 @@ class ChatMainDisplay extends React.Component {
             <div
               className="toolbar-button outline-only circle"
               onClick={this.handleOpenSettings}
-              noflex
+              noflex="true"
             >
               <Icon
                 className="outline-only"

@@ -58,7 +58,12 @@ class ContactEditDisplay extends React.Component {
   }
 
   render() {
-    this.formProps.find(item => {return item.prop === 'uuid'}).disabled = !!this.props.existingContact
+    const uuidProp =this.formProps.find(item => {return item.prop === 'uuid'})
+    if (uuidProp) {
+      uuidProp.disabled = !!this.props.existingContact
+      uuidProp.copiable = true
+    }
+    
     return (
       <div className="contact-edit">
         <div className="title">{`${this.props.existingContact ? 'Edit' : 'New'} - ${this.props.contact.getTitle()}`}</div>
@@ -76,17 +81,20 @@ class ContactEditDisplay extends React.Component {
           }
         </GridForm>
         <ToolbarDisplay>
-          <div 
-            noflex="true"
-            className="form-button square cancel"
-            onClick={this.handleDelete}
-          >
-            <Icon
-              className="outline-only red"
-              iconSize={32}
-              url="./icons_proc/trash.svg#trash"
-            ></Icon>
-          </div>
+          {
+            !!this.props.existingContact &&
+            <div 
+              noflex="true"
+              className="form-button square cancel"
+              onClick={this.handleDelete}
+            >
+              <Icon
+                className="outline-only red"
+                iconSize={32}
+                url="./icons_proc/trash.svg#trash"
+              ></Icon>
+            </div>
+          }
           <button className="form-button cancel" onClick={this.handleCancel}>CANCEL</button>
           <button className="form-button" onClick={this.handleSave}>SAVE</button>
         </ToolbarDisplay>

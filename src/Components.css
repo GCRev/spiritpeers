@@ -69,7 +69,7 @@
 
 .toolbar-button.outline-only {
   background-color: unset;
-  border: 1px solid var(--button-col);
+  /* border: 1px solid var(--button-col); */
 }
 
 .toolbar-button.outline-only .icon {
@@ -154,6 +154,7 @@
 .grid-form div.form-input {
   display: flex;
   align-items: center;
+  position: relative;
 }
 
 .form-button {
@@ -268,4 +269,35 @@ div.form-button {
 .tooltip:hover .tooltip-text {
   visibility: visible;
   opacity: 1;
+}
+
+.copiable svg.copy-icon {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 1em;
+  width: 1em;
+  pointer-events: none;
+  transform: translate3d(2px, 0, 0);
+  opacity: 0;
+  transition: all 0.3s var(--ease-out);
+}
+
+.copiable:hover svg.copy-icon {
+  transform: translate3d(-1px, 0, 0);
+  opacity: 1;
+}
+
+.form-input.copiable.disabled {
+  pointer-events: unset;
+}
+
+.form-input.copiable {
+  cursor: pointer;
+}
+
+.form-input.copiable svg.copy-icon {
+  height: 24px;
+  width: 24px;
+  top: 2px;
 }

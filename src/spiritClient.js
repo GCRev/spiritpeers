@@ -231,7 +231,8 @@ class Contact extends Evt {
     return this
   }
 
-  clearLog() {
+  clearLog(clear) {
+    if (!clear) return
     this.log.clear()
   }
 }
@@ -326,7 +327,7 @@ class SpiritClient extends Evt {
     if (!clear) return
     for (const uuid in this.data.contacts) {
       const contact = this.data.contacts[uuid]
-      contact.clearLog()
+      contact.clearLog(true)
     }
   }
 
@@ -592,12 +593,13 @@ class SpiritClient extends Evt {
 
       this.webSocket = new WebSocket(`ws://${SERVER_URL}`)
       this.webSocket.addEventListener('error', evt => {
+        const message = 'Real-time connection to serverino encountered an error'
         this.notify({
           title: 'Connection Error',
-          content: 'Real-time connection to serverino encountered an error',
+          content: message,
           className: 'warn'
         })
-        reject()
+        reject(Error(message))
       })
       this.webSocket.addEventListener('message', async evt => {
         if (evt.data === 'connected') {
@@ -614,6 +616,8 @@ class SpiritClient extends Evt {
               const dataSplit = data.split('|')
               const targetContact = this.getContact(dataSplit[0])
               targetContact.publicKey = Buffer.from(dataSplit[1], 'base64')
+              /* cache-bust existing sharedSecret, which may be stale */
+              targetContact.sharedSecret = undefined
               /* command ui to display a notification */
               targetContact.conversationRequest()
               break
@@ -627,6 +631,8 @@ class SpiritClient extends Evt {
               const dataSplit = data.split('|')
               const targetContact = this.getContact(dataSplit[0])
               targetContact.publicKey = Buffer.from(dataSplit[1], 'base64')
+              /* cache-bust existing sharedSecret, which may be stale */
+              targetContact.sharedSecret = undefined
               break
             }
           default:
@@ -704,10 +710,12 @@ class SpiritClient extends Evt {
     if (!this.data.uuid) return 
     
     const targetContact = this.getContact(target)
+    /*
     if (targetContact.publicKey) {
       this.fire('talk-to', {response: {}, target: targetContact})
       return {}
     }
+    */
 
     const result = await ipcr.invoke('talk-to', {
       url: `http://${SERVER_URL}/talkto`,
@@ -817,7 +825,7 @@ class SpiritClient extends Evt {
         await this.loadVaultFile()
 
         this.fire('logon')
-        this.connect()
+        await this.connect()
         return buffer
       } catch (err) {
         this.fire('logon-failure', err.message)

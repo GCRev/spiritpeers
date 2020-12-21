@@ -211,16 +211,20 @@ message .content {
   margin-bottom: 20px;
 }
 
-/* How would you make this generic?? */
-
 .user-info {
   font-weight: bolder;
   font-size: medium;
   justify-content: left;
   width: 100%;
   color: var(--d-turq);
+  position: relative;
+  transition: all 0.1s;
 }
 
 .user-info:hover {
   color: var(--turq);
+}
+
+.user-info .user-name {
+  width: 100%;
 }

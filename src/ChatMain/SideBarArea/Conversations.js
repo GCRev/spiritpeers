@@ -88,7 +88,7 @@ class ContactDisplay extends React.Component {
   handleConversationRequest() { }
 
   async clickHandler() {
-    const result = await this.props.target.talkTo()
+    await this.props.target.talkTo()
 
     /*
     if (!result) return 

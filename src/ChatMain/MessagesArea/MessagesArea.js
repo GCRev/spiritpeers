@@ -8,7 +8,7 @@ class MessageDisplay extends React.Component {
 
   formatDate() {
     const date = new Date(this.props.ts)
-    return `${date.getHours()}:${date.getMinutes()}`
+    return `${('' + date.getHours()).padStart(2, '0')}:${('' + date.getMinutes()).padStart(2, '0')}`
   }
 
   render() {

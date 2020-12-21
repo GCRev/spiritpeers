@@ -2,9 +2,9 @@
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 <svg width="32px" height="32px" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" >
     <g id="contact_add">
-        <circle cx="15" cy="8" r="5" />
-        <path d="M4,24l0,-4.007c0,-2.205 1.788,-3.993 3.993,-3.993c3.974,-0 10.04,-0 14.014,-0c2.205,0 3.993,1.788 3.993,3.993c0,2.002 0,4.007 0,4.007" />
-        <path d="M26,3l-0,6" />
-        <path d="M23,6l6,0" />
+        <circle cx="15" cy="10.5" r="5" />
+        <path d="M4,26.5l0,-4.007c0,-2.205 1.788,-3.993 3.993,-3.993c3.974,-0 10.04,-0 14.014,-0c2.205,0 3.993,1.788 3.993,3.993c0,2.002 0,4.007 0,4.007" />
+        <path d="M26,5.5l-0,6" />
+        <path d="M23,8.5l6,0" />
     </g>
 </svg>
