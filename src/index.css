@@ -16,6 +16,8 @@
   --d-green: rgb(23, 109, 27);
   --red-s: 229, 44, 27;
   --red: rgb(var(--red-s));
+  --d-red-s: 195, 35, 20;
+  --d-red: rgb(var(--d-red-s));
   --green-s: 50, 130, 35;
   --green: rgb(var(--green-s));
   --gold-s: 173, 162, 36;

@@ -4,6 +4,7 @@ import { Icon, ToolbarDisplay, GridForm } from '../Components'
 class ContactEditDisplay extends React.Component {
   constructor(data) {
     super()
+    this.handleToggleClearLogs = this.handleToggleClearLogs.bind(this)
     this.handleOnChange = this.handleOnChange.bind(this)
     this.handleCancel = this.handleCancel.bind(this)
     this.handleSave = this.handleSave.bind(this)
@@ -20,6 +21,12 @@ class ContactEditDisplay extends React.Component {
   componentWillUnmount() {
   }
 
+  handleToggleClearLogs() {
+    this.setState({
+      clearLogs: !this.state.clearLogs
+    })
+  }
+
   handleDelete() {
     this.props.contact.deleteContact()
   }
@@ -33,6 +40,10 @@ class ContactEditDisplay extends React.Component {
     
     for (const formProp of this.formProps) {
       params[formProp.prop] = formProp 
+    }
+    params.clearLogs = {
+      prop: 'clearLog',
+      value: !!this.state.clearLogs
     }
 
     this.props.contact.saveUpsert(params)
@@ -54,7 +65,16 @@ class ContactEditDisplay extends React.Component {
         <GridForm
           formFields={this.formProps}
           onChange={this.handleOnChange}
-        ></GridForm>
+        >
+          {
+            !!this.props.existingContact &&
+            <button 
+              prop="clearLogs" 
+              className={`form-button ${this.state.clearLogs ? 'red' : 'cancel'}`}
+              onClick={this.handleToggleClearLogs}
+            >CLEAR LOG</button>
+          }
+        </GridForm>
         <ToolbarDisplay>
           <div 
             noflex="true"
@@ -67,7 +87,7 @@ class ContactEditDisplay extends React.Component {
               url="./icons_proc/trash.svg#trash"
             ></Icon>
           </div>
-          <button className="form-button cancel" onClick={this.props.existingContact ? this.handleCancel : this.handleDelete}>CANCEL</button>
+          <button className="form-button cancel" onClick={this.handleCancel}>CANCEL</button>
           <button className="form-button" onClick={this.handleSave}>SAVE</button>
         </ToolbarDisplay>
       </div>

@@ -31,17 +31,17 @@ class StyleRemove extends Transform {
         }
         if (!this.passedStyle) {
           this.buffer.push(charCode)
-        } else if (!this.quoteCar) {
+        } else if (!this.quoteChar) {
           // check opening quote and store it for a
           // match later
           if (char === "'" || char === '"') {
-            this.quoteCar = char
+            this.quoteChar = char
           }
-        } else if (this.quoteCar) {
-          // if quoteCar has been assigned then 
+        } else if (this.quoteChar) {
+          // if quoteChar has been assigned then 
           // only reset after a match has been found
-          if (char === this.quoteCar) {
-            this.quoteCar = undefined
+          if (char === this.quoteChar) {
+            this.quoteChar = undefined
             this.passedStyle = false
           }
         }

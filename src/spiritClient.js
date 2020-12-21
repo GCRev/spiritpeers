@@ -176,8 +176,8 @@ class Contact extends Evt {
     let result = {}
 
     try {
-      result = await this.spiritClient.message(this.uuid, md)
       this.writeToLog(md, this.spiritClient.data.uuid)
+      result = await this.spiritClient.message(this.uuid, md)
     } catch (err) {
       /* uhh */
     }
@@ -212,6 +212,15 @@ class Contact extends Evt {
         }
       }
     }
+
+    for (const key in params) {
+      const prop = params[key]
+      if (prop.prop in this &&
+        typeof this[prop.prop] === 'function') {
+        this[prop.prop].call(this, prop.value)
+      }
+    }
+
     await this.spiritClient.confirmUpsertContact(this)
     this.fire('save-upsert', {contact: this})
     return result
@@ -220,6 +229,10 @@ class Contact extends Evt {
   async deleteContact() {
     await this.spiritClient.deleteContact(this.uuid)
     return this
+  }
+
+  clearLog() {
+    this.log.clear()
   }
 }
 
@@ -307,6 +320,14 @@ class SpiritClient extends Evt {
     }
     await this.writeVaultFile()
     this.fire('save-settings', params)
+  }
+
+  clearLogs(clear) {
+    if (!clear) return
+    for (const uuid in this.data.contacts) {
+      const contact = this.data.contacts[uuid]
+      contact.clearLog()
+    }
   }
 
   validateUsername(username) {
@@ -564,7 +585,7 @@ class SpiritClient extends Evt {
       return 
     }
 
-    return new Promise(resolve => {
+    return new Promise((resolve, reject) => {
       if (this.webSocket) {
         this.webSocket.close()
       }
@@ -576,6 +597,7 @@ class SpiritClient extends Evt {
           content: 'Real-time connection to serverino encountered an error',
           className: 'warn'
         })
+        reject()
       })
       this.webSocket.addEventListener('message', async evt => {
         if (evt.data === 'connected') {
@@ -718,7 +740,7 @@ class SpiritClient extends Evt {
       ts: ts 
     }
     const result = await this.send('msg', target, JSON.stringify(data))
-    this.writeVaultFile()
+    await this.writeVaultFile()
     this.fire('message-sent', {result: result, target: target, data: data})
     return result
   }
@@ -742,7 +764,11 @@ class SpiritClient extends Evt {
 
     if (!this.webSocket || 
       (this.webSocket && this.webSocket.readyState !== WebSocket.OPEN)) {
-      await this.connect()
+      try {
+        await this.connect()
+      } catch (err) {
+        return {offline: true}
+      }
     }
 
     return new Promise(resolve => {

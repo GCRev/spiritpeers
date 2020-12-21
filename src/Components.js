@@ -161,13 +161,15 @@ class GridForm extends React.Component {
         {
           !!React.Children.count(this.props.children) &&
           React.Children.map(this.props.children, (child, index) => {
-            return (
-              <GridFormRow
+            if (React.isValidElement(child)) {
+              return (
+                <GridFormRow
                 key={`item-gen-${index}`}
                 title={child.props.title}
                 onChange={value => this.onChange(child.props.prop, value)}
-              >{child}</GridFormRow>
-            ) 
+                >{child}</GridFormRow>
+              ) 
+            }
           })
         }
       </div>

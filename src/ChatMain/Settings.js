@@ -4,6 +4,8 @@ import { GridForm, ToolbarDisplay } from '../Components'
 class SettingsDisplay extends React.Component {
   constructor(data) {
     super()
+    this.state={}
+    this.handleToggleClearLogs = this.handleToggleClearLogs.bind(this)
     this.handleCancel = this.handleCancel.bind(this)
     this.handleApply = this.handleApply.bind(this)
     this.handleOnChange = this.handleOnChange.bind(this)
@@ -28,6 +30,12 @@ class SettingsDisplay extends React.Component {
     ]
   }
 
+  handleToggleClearLogs() {
+    this.setState({
+      clearLogs: !this.state.clearLogs
+    })
+  }
+
   handleCancel() {
     this.props.spiritClient.saveSettings()
   }
@@ -37,6 +45,10 @@ class SettingsDisplay extends React.Component {
     
     for (const formProp of this.formProps) {
       params[formProp.prop] = formProp 
+    }
+    params.clearLogs = {
+      prop: 'clearLogs',
+      value: !!this.state.clearLogs
     }
 
     this.props.spiritClient.saveSettings(params)
@@ -58,7 +70,11 @@ class SettingsDisplay extends React.Component {
           formFields={this.formProps}
           onChange={this.handleOnChange}
         >
-          <button title="Clear Logs" className="form-button cancel" onClick={this.handleCancel}>CLEAR LOGS</button>
+          <button 
+            prop="clearLogs" 
+            className={`form-button ${this.state.clearLogs ? 'red' : 'cancel'}`}
+            onClick={this.handleToggleClearLogs}
+          >CLEAR LOGS</button>
         </GridForm>
         <ToolbarDisplay>
           <button className="form-button cancel" onClick={this.handleCancel}>CANCEL</button>
