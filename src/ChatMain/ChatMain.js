@@ -5,7 +5,7 @@ import MessageAreaDisplay from './MessagesArea/MessagesArea'
 import ConversationsDisplay from './SideBarArea/Conversations'
 import ContactEditDisplay from './ContactEdit'
 import SettingsDisplay from './Settings'
-import { ToolbarDisplay, Overlay, Icon } from '../Components'
+import { ToolbarDisplay, Overlay, Icon, UserInfo } from '../Components'
 import React from 'react'
 
 class ChatMainDisplay extends React.Component {
@@ -78,21 +78,29 @@ class ChatMainDisplay extends React.Component {
           <ConversationsDisplay spiritClient={this.props.spiritClient}></ConversationsDisplay>
           <MessageAreaDisplay spiritClient={this.props.spiritClient}></MessageAreaDisplay>
           <ToolbarDisplay id="main-toolbar">
-            <div 
+            {/* How do you make this styling generic?? */}
+            <div className="user-info flex-bar">
+              <UserInfo
+                spiritClient={this.props.spiritClient}
+              ></UserInfo>
+            </div>
+            <div
               className="toolbar-button outline-only circle"
               onClick={this.handleInsertContact}
+              noflex
             >
-              <Icon 
+              <Icon
                 className="outline-only"
                 iconSize={32}
                 url="./icons_proc/contact_add.svg#contact_add"
               ></Icon>
             </div>
-            <div 
+            <div
               className="toolbar-button outline-only circle"
               onClick={this.handleOpenSettings}
+              noflex
             >
-              <Icon 
+              <Icon
                 className="outline-only"
                 iconSize={32}
                 url="./icons_proc/gear.svg#gear"
