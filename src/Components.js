@@ -1,3 +1,4 @@
+import { render } from '@testing-library/react'
 import React from 'react'
 import { CSSTransition } from 'react-transition-group'
 import './Components.css'
@@ -10,7 +11,7 @@ class Overlay extends React.Component {
 
   render() {
     return (
-      <CSSTransition 
+      <CSSTransition
         in={this.props.in}
         unmountOnExit
         timeout={400}
@@ -21,7 +22,7 @@ class Overlay extends React.Component {
           <div className="panel">
             {
               React.Children.map(this.props.children, child => {
-                return React.cloneElement(child, {onClose: this.props.onClose})
+                return React.cloneElement(child, { onClose: this.props.onClose })
               })
             }
           </div>
@@ -38,10 +39,10 @@ class ToolbarItemDisplay extends React.Component {
 
   render() {
     return (
-      <div 
-        className={`toolbar-item ${this.props.noflex ? 'no-flex': ''}`}
+      <div
+        className={`toolbar-item ${this.props.noflex ? 'no-flex' : ''}`}
         onClick={this.props.onClick}>
-          {this.props.children}
+        {this.props.children}
       </div>
     )
   }
@@ -57,15 +58,15 @@ class ToolbarDisplay extends React.Component {
       <div
         id={this.props.id}
         className="toolbar flex-bar">
-          {React.Children.map(this.props.children, child => {
-            return (
-              <ToolbarItemDisplay
-                noflex={child.props.noflex}
-              >
-                {React.cloneElement(child)}
-              </ToolbarItemDisplay>
-            )
-          })}
+        {React.Children.map(this.props.children, child => {
+          return (
+            <ToolbarItemDisplay
+              noflex={child.props.noflex}
+            >
+              {React.cloneElement(child)}
+            </ToolbarItemDisplay>
+          )
+        })}
       </div>
     )
   }
@@ -75,7 +76,7 @@ class Icon extends React.Component {
   render() {
     return (
       <svg
-        className={`icon ${this.props.className || ''}` }
+        className={`icon ${this.props.className || ''}`}
         viewBox={`0 0 ${this.props.iconSize} ${this.props.iconSize}`}
       >
         <use
@@ -99,43 +100,43 @@ class GridFormRow extends React.Component {
 
   render() {
     return (
-      <React.Fragment> 
-        <label 
+      <React.Fragment>
+        <label
           className="form-label"
         >{`${this.props.title ? this.props.title + ':' : ''}  `}</label>
-        { 
-          React.Children.count(this.props.children) ? 
-          (
-            React.Children.only(this.props.children)
-          )
-          :
-          (this.props.disabled ? 
-          <div
-            className="form-input disabled" 
-          >{this.props.defaultValue || this.props.value}</div>
-          :
-          <input 
-            className="form-input" 
-            type={this.props.inputType || "text" }
-            defaultValue={this.props.defaultValue || this.props.value}
-            onChange={this.handleOnChange}
-          ></input>)
+        {
+          React.Children.count(this.props.children) ?
+            (
+              React.Children.only(this.props.children)
+            )
+            :
+            (this.props.disabled ?
+              <div
+                className="form-input disabled"
+              >{this.props.defaultValue || this.props.value}</div>
+              :
+              <input
+                className="form-input"
+                type={this.props.inputType || "text"}
+                defaultValue={this.props.defaultValue || this.props.value}
+                onChange={this.handleOnChange}
+              ></input>)
         }
-      </React.Fragment> 
+      </React.Fragment>
     )
   }
 }
 
 class GridForm extends React.Component {
   constructor(data) {
-    super() 
+    super()
     this.state = {}
     this.onChange = this.onChange.bind(this)
   }
 
   onChange(prop, value) {
     if (!this.props.onChange) return
-    this.props.onChange(prop, value) 
+    this.props.onChange(prop, value)
   }
 
   render() {
@@ -144,10 +145,10 @@ class GridForm extends React.Component {
      * will attempt to submit the form on click. This is unwanted
      * behavior that sucks and confused me for like three hours 
      */
-    return ( 
+    return (
       <div className="grid-form">
         {
-          !!this.props.formFields && 
+          !!this.props.formFields &&
           this.props.formFields.map((item, index) => {
             return (
               <GridFormRow
@@ -177,11 +178,46 @@ class GridForm extends React.Component {
   }
 }
 
-export { 
+class UserInfo extends React.Component {
+  constructor(data) {
+    super()
+    this.state = {
+      copied: false
+    }
+    this.uuid = data.spiritClient.data.uuid
+    this.username = data.spiritClient.data.username
+  }
+
+  copyToClipBoard() {
+    var self = this
+    navigator.clipboard.writeText(this.uuid).then(function () {
+      self.setState({
+        copied: true
+      })
+      self.render()
+    }, function (err) { })
+  }
+
+  render() {
+    return (
+      <div
+        id="user-name"
+        className="user-name"
+        title={this.state.copied ? "Copied" : "Click to copy ID"}
+        onClick={() => this.copyToClipBoard.call(this, this.uuid)}
+      >
+        {this.username}
+      </div>
+    )
+  }
+}
+
+export {
   Overlay,
   ToolbarDisplay,
   ToolbarItemDisplay,
   Icon,
   GridFormRow,
-  GridForm
+  GridForm,
+  UserInfo
 }
