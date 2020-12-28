@@ -27,7 +27,7 @@
   --plum-s: 140, 56, 137;
   --plum: rgb(var(--plum-s));
   --teal-s: 0, 128, 98;
-  --teal: rgb(var(--plum-s));
+  --teal: rgb(var(--teal-s));
   --turq-s: 8, 200, 181;
   --turq: rgb(var(--turq-s));
   --d-turq-s: 8, 170, 155;

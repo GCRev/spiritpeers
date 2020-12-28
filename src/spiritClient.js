@@ -128,11 +128,13 @@ class Contact extends Evt {
       }
       this.fire('message-logged', this)
     } else {
-      messageResult.item.md = md
-      messageResult.item.edited = true
-      this.fire('message-edited', this)
+      if (md !== messageResult.item.md) {
+        messageResult.item.md = md
+        messageResult.item.edited = true
+        this.fire('message-edited', this)
+      }
     }
-
+    return ts
   }
 
   conversationRequest() {
@@ -152,7 +154,6 @@ class Contact extends Evt {
       }
       this.state = 'pending'
       const result = await this.spiritClient.talkTo(this.uuid)
-      console.log(result)
       if (result.status === 'error') {
         this.state = ''
         this.spiritClient.notify({
@@ -172,12 +173,16 @@ class Contact extends Evt {
     return false
   }
 
-  async message(md) {
+  async message(md, ts=Date.now()) {
     let result = {}
 
     try {
-      this.writeToLog(md, this.spiritClient.data.uuid)
+      const resultTs = this.writeToLog(md, this.spiritClient.data.uuid, ts)
       result = await this.spiritClient.message(this.uuid, md)
+      if (result.offline) {
+        this.log.get(resultTs).item.offline = true
+      }
+      await this.spiritClient.writeVaultFile()
     } catch (err) {
       /* uhh */
     }
@@ -437,14 +442,14 @@ class SpiritClient extends Evt {
       result = this.data.contacts[uuid]
     }
 
-    if (!result.secret) {
-      secret.setPrivateKey(result.privateKey)
-      result.secret = secret
-    }
-
     /* cache the sharedSecret if required data are present */
-    if (result.privateKey && result.publicKey && ! result.sharedSecret) {
+    if (result.privateKey && result.publicKey && !result.sharedSecret) {
+      try {
       result.sharedSecret = result.secret.computeSecret(result.publicKey)
+      } catch (err) {
+        /* if this fails, then eliminate the public key -- likely stale */
+        delete result.publicKey
+      }
     }
 
     return result
@@ -496,6 +501,10 @@ class SpiritClient extends Evt {
   async getVaultFile() {
     return this.getFile('vault.sp2p')
   } 
+
+  async getLogFile() {
+    return this.getFile('log.sp2p')
+  }
 
   async loadVaultFile() {
     if (!this.data.hash) return 
@@ -664,13 +673,16 @@ class SpiritClient extends Evt {
           if (!contact.sharedSecret) return
 
           let data = ''
-          const iv = dataBuffer.slice(UUID_LEN + UUID_LEN, UUID_LEN + UUID_LEN + 16)
-          const encMessage = dataBuffer.slice(UUID_LEN + UUID_LEN + 16)
-          const decipher = crypto.createDecipheriv('aes-256-cbc', contact.sharedSecret.slice(0, 32), iv)
-          data += decipher.update(encMessage, null, 'utf8')
-          data += decipher.final('utf8') 
-          console.log(data)
-          handler.call(this, contact, data)
+          try {
+            const iv = dataBuffer.slice(UUID_LEN + UUID_LEN, UUID_LEN + UUID_LEN + 16)
+            const encMessage = dataBuffer.slice(UUID_LEN + UUID_LEN + 16)
+            const decipher = crypto.createDecipheriv('aes-256-cbc', contact.sharedSecret.slice(0, 32), iv)
+            data += decipher.update(encMessage, null, 'utf8')
+            data += decipher.final('utf8') 
+            handler.call(this, contact, data)
+          } catch (err) {
+            /* deciphering usually fails when the public key is stale */
+          }
           return 
         }
       })
@@ -710,6 +722,9 @@ class SpiritClient extends Evt {
     if (!this.data.uuid) return 
     
     const targetContact = this.getContact(target)
+
+    this.fire('talk-to', {target: targetContact})
+
     /*
     if (targetContact.publicKey) {
       this.fire('talk-to', {response: {}, target: targetContact})
@@ -732,11 +747,7 @@ class SpiritClient extends Evt {
       targetContact.publicKey = Buffer.from(result.publicKey, 'base64')
     } else if (result.status === 'error') {
       /* throw whatever error it is */
-      this.fire('talk-to-error', result)
-    }
-
-    if (result.success) {
-      this.fire('talk-to', {response: result, target: targetContact})
+      this.fire('talk-to-error', {...result, target: targetContact})
     }
 
     return result
@@ -748,7 +759,6 @@ class SpiritClient extends Evt {
       ts: ts 
     }
     const result = await this.send('msg', target, JSON.stringify(data))
-    await this.writeVaultFile()
     this.fire('message-sent', {result: result, target: target, data: data})
     return result
   }
@@ -900,6 +910,24 @@ class SpiritClient extends Evt {
     return contact
   }
   
+  previewMessage(md) {
+    this.fire('message-preview', md)
+  }
+
+  editMessage(uuid, ts) {
+    if (!uuid) {
+      this.fire('message-edit', {})
+      return
+    }
+    const contact = this.getContact(uuid, true)
+    if (!contact) return
+    
+    let logItem = contact.log.last()
+    if (ts) logItem = contact.log.get(ts).item
+    if (!logItem) return
+
+    this.fire('message-edit', {contact: contact, logEntry: logItem})
+  }
 }
 
 export default SpiritClient

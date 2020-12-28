@@ -33,7 +33,7 @@
   max-height: 50%;
 }
 
-#chat-box {
+chat-box {
   grid-area: 2 / 3 / 3 / 3;
   max-height: 100%;
   overflow: auto;
@@ -126,11 +126,26 @@
 }
 
 message {
+  display: block;
+  transition: all 0.3s var(--ease-out);
+  border: 1px solid transparent;
+  padding: 0 4px;
+}
+
+message.edit-message {
+  box-shadow: 0 0 8px 0 rgba(0,0,0,0.3);
+  border: 1px solid var(--lt-grey);
+  padding: 0;
+  margin: 0 4px;
+}
+
+message .message-wrapper {
+  padding: 8px 16px;
+  margin: 0; 
+  position: relative;
   display: flex;
   align-items: flex-start;
-  padding: 8px;
-  margin: 0 4px;
-  position: relative;
+  transition: all 0.1s;
 }
 
 message .date {
@@ -156,6 +171,14 @@ message .edit-indicator {
   align-self: flex-end;
 }
 
+message.from-source {
+  cursor: pointer;
+}
+
+message.from-source:hover {
+  background-color: var(--slt-grey);
+}
+
 message.from-source .title {
   background-color: var(--slt-grey);
 }
@@ -171,8 +194,34 @@ message .content {
   max-width: calc(100% - 64px);
 }
 
+message .content *:first-child {
+  margin-top: 0;
+}
+
+message .content *:last-child {
+  margin-bottom: 0;
+}
+
+message.preview {
+  background-color: var(--slt-grey);
+  color: var(--d-turq);
+}
+
+message.preview.from-source .title {
+  border: 1px solid var(--d-turq);
+}
+
+message.offline.from-source .title {
+  background-color: transparent;
+  border: 1px solid var(--lt-grey);
+  color: var(--lt-grey);
+}
+
+message.offline .content {
+  color: var(--grey)
+}
+
 .message-history {
-  padding: 4px;
   width: 100%;
   flex: 1;
   overflow-y: auto;

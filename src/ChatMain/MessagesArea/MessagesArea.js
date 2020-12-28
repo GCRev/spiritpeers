@@ -1,9 +1,13 @@
 import React from 'react'
+import MarkdownIt from 'markdown-it'
+
+const mdRenderer = new MarkdownIt()
 
 class MessageDisplay extends React.Component {
   constructor() {
     super()
     this.state = {}
+    this.markup = this.markup.bind(this)
   }
 
   formatDate() {
@@ -11,17 +15,57 @@ class MessageDisplay extends React.Component {
     return `${('' + date.getHours()).padStart(2, '0')}:${('' + date.getMinutes()).padStart(2, '0')}`
   }
 
-  render() {
+  markup() {
+    return {__html: mdRenderer.render(this.props.md || '')}
+  }
+
+  renderPreview() {
     return (
-      <message is="div" class={this.props.isTarget ? 'from-target' : 'from-source'}>
-        <div className="date">{this.formatDate()}</div>
-        <div className="title">{this.props.title}</div> 
-        <div className="content">{this.props.md || ''}</div>
-        {this.props.edited &&
-          <div className="edit-indicator">EDITED</div>
-        }
+      <message is="div" class="from-source preview">
+        <div className="message-wrapper">
+          <div className="date">{this.formatDate()}</div>
+          <div className="title">{this.props.title}</div> 
+          <div className="content" dangerouslySetInnerHTML={this.markup()}></div>
+          <div className="edit-indicator">PREVIEW</div>
+        </div>
       </message>
     )
+  }
+
+  renderNormal() {
+    let className = [this.props.isTarget ? 'from-target ' : 'from-source ']
+    if (this.props.offline)  className.push('offline') 
+    if (this.props.editMessage) className.push('edit-message')
+    return (
+      <message is="div" class={className.join(' ')}>
+        <div className="message-wrapper">
+          <div className="date">{this.formatDate()}</div>
+          <div className="title">{this.props.title}</div> 
+          {
+            !this.props.editMessage &&
+            <div className="content" dangerouslySetInnerHTML={this.markup()}></div>
+          }
+          {
+            !!this.props.editMessage &&
+            <div className="content">
+              <ChatBoxDisplay 
+                spiritClient={this.props.spiritClient} 
+                editMessage={this.props.editMessage}
+                target={this.props.target}
+              ></ChatBoxDisplay>
+            </div>
+          }
+          {
+            this.props.edited &&
+            <div className="edit-indicator">EDITED</div>
+          }
+        </div>
+      </message>
+    )
+  }
+
+  render() {
+    return this.props.preview ? this.renderPreview() : this.renderNormal()
   }
 }
 
@@ -45,22 +89,34 @@ class MessageHistoryDisplay extends React.Component {
   }
 
   handleMessageSent(args) {
-    console.log(args)
     this.setState({
       log: args.target.log
     })
+  }
+
+  handleMessagePreview(md) {
+    this.setState({
+      showingPreview: !!md,
+    })
+    if (md) {
+      this.setState({
+        previewMd: md
+      })
+    }
   }
 
   componentDidMount() {
     this.props.spiritClient.on('talk-to', this.handleTalkTo, this)
     this.props.spiritClient.on('message-received', this.handleMessageReceived, this)
     this.props.spiritClient.on('message-sent', this.handleMessageSent, this)
+    this.props.spiritClient.on('message-preview', this.handleMessagePreview, this)
   }
 
   componentWillUnmount() {
     this.props.spiritClient.un('talk-to', this.handleTalkTo, this)
     this.props.spiritClient.un('message-received', this.handleMessageReceived, this)
     this.props.spiritClient.un('message-sent', this.handleMessageSent, this)
+    this.props.spiritClient.un('message-preview', this.handleMessagePreview, this)
   }
 
   render() {
@@ -82,15 +138,24 @@ class MessageHistoryDisplay extends React.Component {
             return (
               <MessageDisplay
                 key={`log-index-${index}`}
-                isTarget={entry.uuid === this.state.target.uuid}
-                ts={entry.ts}
-                uuid={entry.uuid}
-                md={entry.md}
+                spiritClient={this.props.spiritClient}
+                {...entry}
                 title={title}
-                edited={entry.edited}
+                isTarget={entry.uuid === this.state.target.uuid}
+                target={this.state.target}
+                editMessage={this.props.editingMessage && entry.ts === this.props.editMessage ? entry.ts : undefined}
               ></MessageDisplay>
             )
           })
+        }
+        {this.state.showingPreview &&
+          <MessageDisplay
+            isTarget={false}
+            md={this.state.previewMd}
+            preview={true}
+            title={this.props.spiritClient.getTitle()}
+            ts={Date.now()}
+          ></MessageDisplay>
         }
       </div>
     )
@@ -103,6 +168,14 @@ class ChatBoxDisplay extends React.Component {
     this.state = {}
     this.chatBoxRef = React.createRef()
     this.chatKeyupHandler = this.chatKeyupHandler.bind(this)
+    this.timerId = -1
+    if (data.target && data.editMessage) {
+      const targetEntryResult = data.target.log.get(data.editMessage)
+      console.log(targetEntryResult)
+      if (targetEntryResult.item) {
+        this.initialContent = targetEntryResult.item.md
+      }
+    }
   }
 
   handleTalkTo(args) {
@@ -113,6 +186,17 @@ class ChatBoxDisplay extends React.Component {
 
   componentDidMount() {
     this.props.spiritClient.on('talk-to', this.handleTalkTo, this)
+    if (this.initialContent) this.chatBoxRef.current.innerText = this.initialContent
+    if (this.props.editMessage) {
+      setTimeout(() => {
+        const range = new Range()
+        range.selectNodeContents(this.chatBoxRef.current)
+        range.collapse()
+        getSelection().removeAllRanges()
+        getSelection().addRange(range)
+        this.chatBoxRef.current.focus()
+      })
+    }
   }
 
   componentWillUnmount() {
@@ -122,47 +206,73 @@ class ChatBoxDisplay extends React.Component {
   chatAppendStr(str) {
     if (!str) return
 
-    /* 
-     * warning this is shitty, hacky code. This will need to be improved when
-     * we start supported decorative tags and fancy in-chat content (that isn't
-     * just plain text) and whatnot
-     */
+    /* good news: this is no longer shitty-hacky code */
+
+    const chatBoxEl = this.chatBoxRef.current
     
     let selection = getSelection()
-    const { anchorOffset } = selection
 
-    const beforeCaret = this.chatBoxRef.current.innerText.slice(0, anchorOffset)
-    const afterCaret = this.chatBoxRef.current.innerText.slice(anchorOffset)
-    this.chatBoxRef.current.innerText = beforeCaret + str + afterCaret
+    /*
+     * - get current selected range to be able to insertNode before
+     * - clone current selected range and collapse to end to insertNode "at the end"
+     */
+    const selRange = selection.getRangeAt(0)
+    const rangeAtEnd = selRange.cloneRange()
+    rangeAtEnd.collapse(false)
 
-    const anchorNode = this.chatBoxRef.current.childNodes[0]
+    /* handle difference between caret and range-based selections */
+    const addText = document.createTextNode(str)
+    switch (selection.type) {
+    case 'Caret':
+      {
+        /* only insert at beginning if there is no selection body */
+        selRange.insertNode(addText)
+        break
+      }
+    case 'Range':
+      {
+        rangeAtEnd.insertNode(addText)
+        selRange.insertNode(document.createTextNode(str))
+        break
+      }
+    default:
+      break
+    } 
 
-    const range = new Range()
-    range.setStart(anchorNode, anchorOffset + str.length)
-    range.setEnd(anchorNode, anchorOffset + str.length)
-    range.collapse(true)
-
+    /* this intuitively moves the caret after the inserted text */
+    rangeAtEnd.setStartAfter(addText)
+    rangeAtEnd.collapse(true)
     selection.removeAllRanges()
-    selection.addRange(range)
-    // this.chatBoxRef.current.focus() 
+    selection.addRange(rangeAtEnd)
+    
+    /* this function is incredible */
+    chatBoxEl.normalize()
   }
 
   async chatKeyupHandler(evt) {
-    switch (evt.key) {
-    case 'Enter':
-      evt.preventDefault()
-      if (this.state.target) {
-        this.setState({disabled: true})
-        const result = await this.state.target.message(this.chatBoxRef.current.innerText)
-        if (result.offline) {
-          /* do something different? */
+    let target = this.state.target || this.props.target
+    if (!evt.shiftKey) {
+      switch (evt.key) {
+      case 'Enter':
+        evt.preventDefault()
+        if (target) {
+          this.setState({disabled: true})
+          const result = await target.message(this.chatBoxRef.current.innerText, this.props.editMessage)
+          if (result.offline) {
+            /* do something different? */
+          }
+          this.setState({disabled: false})
+          this.chatBoxRef.current.innerText = ''
+          if (this.props.editMessage) {
+            this.props.spiritClient.editMessage()
+          } else {
+            this.props.spiritClient.previewMessage()
+          }
         }
-        this.setState({disabled: false})
-        this.chatBoxRef.current.innerText = ''
+        break
+      default:
+        break
       }
-      break
-    default:
-      break
     }
     if (evt.ctrlKey) {
       switch (evt.key) {
@@ -178,9 +288,27 @@ class ChatBoxDisplay extends React.Component {
         /* no underlining allowed fucko */
         evt.preventDefault()
         break
+      case 'e':
+        if (target && !this.props.editMessage) this.props.spiritClient.editMessage(target.uuid)
+        break
       default:
         break
       }
+    }
+
+    if (this.props.editMessage) return
+
+    if (this.timerId >= 0) {
+      clearTimeout(this.timerId)
+    }
+    if (target &&
+      this.chatBoxRef.current.innerText) {
+      this.timerId = setTimeout(() => {
+        this.props.spiritClient.previewMessage(this.chatBoxRef.current.innerText)
+        this.timerId = -1
+      }, 1000)
+    } else {
+      this.props.spiritClient.previewMessage()
     }
   }
 
@@ -189,10 +317,10 @@ class ChatBoxDisplay extends React.Component {
       <div id="chat-box-area">
         <div 
           ref={this.chatBoxRef}
-          id="chat-box"
-          className={`form-input ${this.state.disabled ? 'disabled' : ''}`}
+          className={`chat-box form-input ${this.state.disabled ? 'disabled' : ''}`}
           onKeyDown={this.chatKeyupHandler} 
-          contentEditable='true'
+          contentEditable="true"
+          tabIndex="-1"
         ></div>
       </div>
     )
@@ -211,12 +339,25 @@ class MessageAreaDisplay extends React.Component {
     })
   }
 
+  handleMessageEdit(args) {
+    this.setState({
+      editingMessage: !!args.logEntry
+    })
+    if (args.logEntry) {
+      this.setState({
+        editMessage: args.logEntry.ts
+      })
+    }
+  }
+
   componentDidMount() {
     this.props.spiritClient.on('talk-to', this.handleTalkTo, this)
+    this.props.spiritClient.on('message-edit', this.handleMessageEdit, this)
   }
 
   componentWillUnmount() {
     this.props.spiritClient.un('talk-to', this.handleTalkTo, this)
+    this.props.spiritClient.un('message-edit', this.handleMessageEdit, this)
   }
 
   render() {
@@ -224,7 +365,12 @@ class MessageAreaDisplay extends React.Component {
     return (
       <div id="message-area">
         <div className="title">{headerText}</div>
-        <MessageHistoryDisplay spiritClient={this.props.spiritClient} reversed={false}></MessageHistoryDisplay>
+        <MessageHistoryDisplay 
+          spiritClient={this.props.spiritClient} 
+          reversed={false}
+          editingMessage={this.state.editingMessage}
+          editMessage={this.state.editMessage}
+        ></MessageHistoryDisplay>
         <ChatBoxDisplay spiritClient={this.props.spiritClient}></ChatBoxDisplay>
       </div>
     )
