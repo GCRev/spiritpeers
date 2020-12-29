@@ -27,13 +27,13 @@
   border-left: 1px solid var(--turq);
 }
 
-#chat-box-area {
+.chat-box-area {
   padding: 4px;
   width: 100%;
   max-height: 50%;
 }
 
-chat-box {
+.chat-box {
   grid-area: 2 / 3 / 3 / 3;
   max-height: 100%;
   overflow: auto;
@@ -140,7 +140,7 @@ message.edit-message {
 }
 
 message .message-wrapper {
-  padding: 8px 16px;
+  padding: 8px 8px 8px 16px ;
   margin: 0; 
   position: relative;
   display: flex;
@@ -189,7 +189,8 @@ message.from-target .title {
 }
 
 message .content {
-  padding: 4px 0;
+  font-size: 16px;
+  padding: 4px 0 4px 9px;
   flex: 1;
   max-width: calc(100% - 64px);
 }
@@ -201,6 +202,15 @@ message .content *:first-child {
 message .content *:last-child {
   margin-bottom: 0;
 }
+
+message.from-source.edit-message .content .chat-box-area {
+  padding: 0;
+}
+
+message.from-source.edit-message .content {
+  padding: 0;
+}
+
 
 message.preview {
   background-color: var(--slt-grey);

@@ -8,6 +8,7 @@ class MessageDisplay extends React.Component {
     super()
     this.state = {}
     this.markup = this.markup.bind(this)
+    this.handleOnClick = this.handleOnClick.bind(this)
   }
 
   formatDate() {
@@ -17,6 +18,15 @@ class MessageDisplay extends React.Component {
 
   markup() {
     return {__html: mdRenderer.render(this.props.md || '')}
+  }
+
+  handleOnClick() {
+    if (this.props.spiritClient && 
+      this.props.target &&
+      !this.props.editMessage &&
+      this.props.ts) {
+      this.props.spiritClient.editMessage(this.props.target.uuid, this.props.ts)
+    }
   }
 
   renderPreview() {
@@ -37,7 +47,7 @@ class MessageDisplay extends React.Component {
     if (this.props.offline)  className.push('offline') 
     if (this.props.editMessage) className.push('edit-message')
     return (
-      <message is="div" class={className.join(' ')}>
+      <message is="div" class={className.join(' ')} onClick={this.handleOnClick}>
         <div className="message-wrapper">
           <div className="date">{this.formatDate()}</div>
           <div className="title">{this.props.title}</div> 
@@ -166,7 +176,12 @@ class ChatBoxDisplay extends React.Component {
   constructor(data) {
     super()
     this.state = {}
-    this.chatBoxRef = React.createRef()
+    if (data.forwardRef) {
+      this.chatBoxRef = data.forwardRef
+    } else {
+      this.chatBoxRef = React.createRef()
+    }
+
     this.chatKeyupHandler = this.chatKeyupHandler.bind(this)
     this.timerId = -1
     if (data.target && data.editMessage) {
@@ -251,6 +266,14 @@ class ChatBoxDisplay extends React.Component {
 
   async chatKeyupHandler(evt) {
     let target = this.state.target || this.props.target
+    const atStart = () => {
+      const range = getSelection().getRangeAt(0)
+      return range.collapsed &&
+        range.startOffset === 0 &&
+        (range.startContainer === this.chatBoxRef.current.childNodes[0] ||
+          range.startContainer === this.chatBoxRef.current)
+    }
+
     if (!evt.shiftKey) {
       switch (evt.key) {
       case 'Enter':
@@ -268,6 +291,16 @@ class ChatBoxDisplay extends React.Component {
           } else {
             this.props.spiritClient.previewMessage()
           }
+        }
+        break
+      case 'ArrowUp':
+        if (target && !this.props.editMessage && atStart()) this.props.spiritClient.editMessage(target.uuid)
+        break
+      case 'Escape':
+        if (this.props.editMessage) {
+          this.props.spiritClient.editMessage()
+        } else {
+          this.chatBoxRef.current.blur()
         }
         break
       default:
@@ -314,7 +347,7 @@ class ChatBoxDisplay extends React.Component {
 
   render() {
     return (
-      <div id="chat-box-area">
+      <div className="chat-box-area">
         <div 
           ref={this.chatBoxRef}
           className={`chat-box form-input ${this.state.disabled ? 'disabled' : ''}`}
@@ -331,6 +364,7 @@ class MessageAreaDisplay extends React.Component {
   constructor(data) {
     super()
     this.state = {}
+    this.chatBoxRef = React.createRef()
   }
 
   handleTalkTo(args) {
@@ -346,6 +380,15 @@ class MessageAreaDisplay extends React.Component {
     if (args.logEntry) {
       this.setState({
         editMessage: args.logEntry.ts
+      })
+    } else {
+      setTimeout(() => {
+        const range = new Range()
+        range.selectNodeContents(this.chatBoxRef.current)
+        range.collapse()
+        getSelection().removeAllRanges()
+        getSelection().addRange(range)
+        this.chatBoxRef.current.focus()
       })
     }
   }
@@ -371,7 +414,7 @@ class MessageAreaDisplay extends React.Component {
           editingMessage={this.state.editingMessage}
           editMessage={this.state.editMessage}
         ></MessageHistoryDisplay>
-        <ChatBoxDisplay spiritClient={this.props.spiritClient}></ChatBoxDisplay>
+        <ChatBoxDisplay forwardRef={this.chatBoxRef} spiritClient={this.props.spiritClient}></ChatBoxDisplay>
       </div>
     )
   }
