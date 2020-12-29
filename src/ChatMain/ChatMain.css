@@ -132,11 +132,17 @@ message {
   padding: 0 4px;
 }
 
+
 message.edit-message {
   box-shadow: 0 0 8px 0 rgba(0,0,0,0.3);
   border: 1px solid var(--lt-grey);
   padding: 0;
   margin: 0 4px;
+}
+
+message.removed {
+  background-color: var(--red);
+  color: var(--white);
 }
 
 message .message-wrapper {
@@ -153,6 +159,10 @@ message .date {
   margin-right: 8px;
   font-variant-numeric: tabular-nums;
   padding: 4px 0;
+}
+
+message.removed .date {
+  color: var(--white);
 }
 
 message .title {
@@ -186,6 +196,12 @@ message.from-source .title {
 message.from-target .title {
   background-color: var(--turq);
   color: var(--white);
+}
+
+message.removed.from-target .title {
+  border-radius: 1em;
+  background-color: transparent;
+  border: 1px solid var(--white);
 }
 
 message .content {

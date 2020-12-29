@@ -28,6 +28,11 @@ class SettingsDisplay extends React.Component {
         title: 'E-mail',
         prop: 'email',
         value: data.spiritClient.data.email,
+      },
+      {
+        title: 'Display Name',
+        prop: 'displayName',
+        value: data.spiritClient.data.displayName,
       }
     ]
   }

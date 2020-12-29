@@ -52,6 +52,22 @@ app.ws('/', ws => {
           }
           break
         }
+      case 'ack':
+        {
+          const targetClient = uuid_cache.get(data.slice(25, 50))
+          if (targetClient) {
+            targetClient.send(msg)
+          }
+          break
+        }
+      case 'log':
+        {
+          const targetClient = uuid_cache.get(data.slice(25, 50))
+          if (targetClient) {
+            targetClient.send(msg)
+          }
+          break
+        }
       default:
         break
       }
@@ -194,7 +210,7 @@ app.post('/talkto', (req, res) => {
     const forwardKey = `${req.body.source}-${req.body.target}`
     const reverseKey = `${req.body.target}-${req.body.source}`
 
-    const sendClientRequest = (prefix = 'req') => {
+    const sendClientRequest = (prefix='req') => {
       /* 
        * check the client cache for an online client matching the 'target' 
        *

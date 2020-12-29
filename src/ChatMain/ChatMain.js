@@ -34,7 +34,7 @@ class UserInfo extends React.Component {
         title={this.state.copied ? "Copied" : "Click to copy ID"}
         onClick={() => this.copyToClipBoard.call(this, this.uuid)}
       >
-        {this.username}
+        {this.props.spiritClient.getTitle()}
         <Icon
           className="outline-only copy-icon"
           iconSize={32}

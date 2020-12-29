@@ -119,19 +119,32 @@ class Contact extends Evt {
     return result
   }
 
-  writeToLog(md, uuid, ts=Date.now()) {
+  writeToLog(md, uuid, ts=Date.now(), params={}) {
     const messageResult = this.log.get(ts)
     if (!messageResult.item) {
-      this.log.add({ts: ts, uuid: uuid || this.uuid, md: md})
+      this.log.add({ts: ts, uuid: uuid || this.uuid, md: md, ...params})
       if (this.log.length > LOG_LIMIT) {
-        this.log.remove(this.log.first().ts)
+        this.log.remove(this.log.first())
       }
       this.fire('message-logged', this)
     } else {
-      if (md !== messageResult.item.md) {
+      delete params.md
+      Object.assign(messageResult.item, params)
+      const keySet = Object.keys(messageResult.item)
+      for (const key of keySet) {
+        if (typeof messageResult.item[key] === 'undefined') {
+          delete messageResult.item[key]
+        }
+      }
+      if (!md) {
+        messageResult.item.removed = true
+        this.fire('message-removed', this)
+      } else if (messageResult.item.md !== md) {
         messageResult.item.md = md
         messageResult.item.edited = true
         this.fire('message-edited', this)
+      } else if (messageResult.item.md === md) {
+        delete messageResult.item.edited
       }
     }
     return ts
@@ -173,18 +186,19 @@ class Contact extends Evt {
     return false
   }
 
-  async message(md, ts=Date.now()) {
+  async message(md, ts=Date.now(), params={}) {
     let result = {}
 
     try {
-      const resultTs = this.writeToLog(md, this.spiritClient.data.uuid, ts)
-      result = await this.spiritClient.message(this.uuid, md)
-      if (result.offline) {
-        this.log.get(resultTs).item.offline = true
-      }
+      this.writeToLog(md, this.spiritClient.data.uuid, ts, {
+        offline: true,
+        ...params
+      })
+      result = await this.spiritClient.message(this.uuid, md, ts, params)
       await this.spiritClient.writeVaultFile()
     } catch (err) {
       /* uhh */
+      console.log(err)
     }
     return result
   }
@@ -240,6 +254,12 @@ class Contact extends Evt {
     if (!clear) return
     this.log.clear()
   }
+
+  getOfflineMessages() {
+    return this.log.all().filter(item => {
+      return item.offline
+    })
+  }
 }
 
 class SpiritClient extends Evt { 
@@ -273,6 +293,10 @@ class SpiritClient extends Evt {
       })
 
     this.notifications = new Map()
+  }
+
+  setDisplayName(displayName) {
+    this.data.displayName = displayName
   }
 
   setUsername(username) {
@@ -376,6 +400,7 @@ class SpiritClient extends Evt {
     if (this.vault.hash) this.setHash(this.vault.hash)
     if (this.vault.username) this.setUsername(this.vault.username)
     if (this.vault.email) this.setEmail(this.vault.email)
+    if (this.vault.displayName) this.setDisplayName(this.vault.displayName)
     if (this.vault.contacts) {
       const newContacts = {}
       for (const contactUuid in this.vault.contacts) {
@@ -469,8 +494,9 @@ class SpiritClient extends Evt {
 
   dataToVault() {
     this.vault.hash = this.data.hash.toString('hex')
-    if (this.data.email) this.vault.email = this.data.email
     if (this.data.username) this.vault.username = this.data.username
+    if (this.data.email) this.vault.email = this.data.email
+    if (this.data.displayName) this.vault.displayName = this.data.displayName
     if (this.data.contacts) {
       const newContacts = {}
       for (const contactUuid in this.data.contacts) {
@@ -589,9 +615,7 @@ class SpiritClient extends Evt {
   async connect(retryOnly) {
     if (!this.data.uuid) throw Error('No uuid')
 
-    if (this.webSocket &&
-      this.webSocket.readyState === WebSocket.OPEN && 
-      retryOnly) {
+    if (this.isWsConnected() && retryOnly) {
       return 
     }
 
@@ -612,7 +636,7 @@ class SpiritClient extends Evt {
       })
       this.webSocket.addEventListener('message', async evt => {
         if (evt.data === 'connected') {
-          if (this.webSocket.readyState === WebSocket.OPEN) {
+          if (this.isWsConnected()) {
             this.webSocket.send(`cli:${this.data.uuid}`)
             resolve()
           }
@@ -627,8 +651,9 @@ class SpiritClient extends Evt {
               targetContact.publicKey = Buffer.from(dataSplit[1], 'base64')
               /* cache-bust existing sharedSecret, which may be stale */
               targetContact.sharedSecret = undefined
-              /* command ui to display a notification */
+              /* command ui to display a "notification" */
               targetContact.conversationRequest()
+              this.blastLogsRightOnOver(targetContact.uuid, true)
               break
             }
           case 'acc':
@@ -642,6 +667,42 @@ class SpiritClient extends Evt {
               targetContact.publicKey = Buffer.from(dataSplit[1], 'base64')
               /* cache-bust existing sharedSecret, which may be stale */
               targetContact.sharedSecret = undefined
+              this.blastLogsRightOnOver(targetContact.uuid, true)
+              break
+            }
+          case 'ack':
+            {
+              /*
+               * peer sends an 'ack'nowledgment message with the timestamp of the 
+               * message that it received. This will switch that message to 'online'
+               */
+              const target = data.slice(0, 25)
+              /* 25-50 is 'this' uuid, so ignore it */
+              try {
+                const ts = Number(data.slice(50))
+                const targetContact = this.getContact(target)
+                const messageResult = targetContact.log.get(ts)
+                if (messageResult.item) {
+                  delete messageResult.item.offline
+                }
+                this.fire('messaging', {source: this, target: targetContact})
+              } catch (err) {
+                /* do nothing */
+              }
+              break
+            }
+          case 'log':
+            {
+              /*
+               * peer sends an log request to sync messages
+               */
+              const target = data.slice(0, 25)
+              /* 25-50 is 'this' uuid, so ignore it */
+              const targetContact = this.getContact(target)
+              for (const entry of targetContact.log.all()) {
+                delete entry.offline
+              }
+              this.blastLogsRightOnOver(target, true)
               break
             }
           default:
@@ -697,9 +758,13 @@ class SpiritClient extends Evt {
   parseMessageReceived(contact, data) {
     try {
       const rjson = JSON.parse(data)
-      contact.writeToLog(rjson.md, undefined, rjson.ts)
+      /* this is a hack */
+      delete rjson.offline
+      contact.writeToLog(rjson.md, undefined, rjson.ts, rjson)
       this.writeVaultFile()
+      this.webSocket.send(`ack:${this.data.uuid}${contact.uuid}${rjson.ts}`)
       this.fire('message-received', {source: contact, data: data})
+      this.fire('messaging', {source: contact, target: this})
     } catch (err) {
       /* do nothing */
     }
@@ -732,6 +797,14 @@ class SpiritClient extends Evt {
     }
     */
 
+    if (!this.isWsConnected()) {
+      try {
+        await this.connect()
+      } catch (err) {
+        /* do nothing */
+      }
+    }
+
     const result = await ipcr.invoke('talk-to', {
       url: `http://${SERVER_URL}/talkto`,
       params: {
@@ -745,6 +818,9 @@ class SpiritClient extends Evt {
     if (result.status === 'accept_response' && result.publicKey) {
       /* this is the public key from the target's secretKey */
       targetContact.publicKey = Buffer.from(result.publicKey, 'base64')
+      if (this.isWsConnected()) {
+        this.webSocket.send(`log:${this.data.uuid}${targetContact.uuid}`)
+      }
     } else if (result.status === 'error') {
       /* throw whatever error it is */
       this.fire('talk-to-error', {...result, target: targetContact})
@@ -753,13 +829,32 @@ class SpiritClient extends Evt {
     return result
   }
 
-  async message(target, md, ts=Date.now()) {
+  async blastLogsRightOnOver(target, force) {
+    const contact = this.getContact(target)
+
+    if (!contact) return
+    if (!contact.sharedSecret) return 
+
+    const offlineEntries = force ? contact.log.all() : contact.getOfflineMessages()
+    if (offlineEntries.length) {
+      for (const offlineEntry of offlineEntries) {
+        await this.message(contact.uuid, offlineEntry.md, offlineEntry.ts, {...offlineEntry})
+      }
+    }
+    this.fire('messaging', {source: this, target: target})
+    this.writeVaultFile()
+    return
+  }
+
+  async message(target, md, ts=Date.now(), params={}) {
     const data = {
       md: md,
-      ts: ts 
+      ts: ts,
+      ...params
     }
     const result = await this.send('msg', target, JSON.stringify(data))
     this.fire('message-sent', {result: result, target: target, data: data})
+    this.fire('messaging', {source: this, target: target})
     return result
   }
 
@@ -775,13 +870,17 @@ class SpiritClient extends Evt {
     return result
   }
 
-  async send(prefix, target, md) {
+  isWsConnected() {
+    if (!this.webSocket) return false
+    return this.webSocket.readyState === WebSocket.OPEN
+  }
+
+  async send(prefix, target, data) {
     const contact = this.getContact(target)
 
     if (!contact.sharedSecret) return {offline: true}
 
-    if (!this.webSocket || 
-      (this.webSocket && this.webSocket.readyState !== WebSocket.OPEN)) {
+    if (!this.isWsConnected()) {
       try {
         await this.connect()
       } catch (err) {
@@ -795,11 +894,10 @@ class SpiritClient extends Evt {
         const cipher = crypto.createCipheriv('aes-256-cbc', contact.sharedSecret.slice(0, 32), iv)
 
         const prefixBuffer = Buffer.from(`${prefix}:` + this.data.uuid + target, 'utf8')
-        const cipheredBuffer = Buffer.from(cipher.update(md))
+        const cipheredBuffer = Buffer.from(cipher.update(data))
         const finalCipheredBuffer = Buffer.from(cipher.final())
 
-        if (this.webSocket && 
-          this.webSocket.readyState === WebSocket.OPEN) {
+        if (this.isWsConnected()) {
           this.webSocket.send(Buffer.concat([prefixBuffer, Buffer.from(iv), cipheredBuffer, finalCipheredBuffer]))
           resolve({online: true})
         }
@@ -922,7 +1020,15 @@ class SpiritClient extends Evt {
     const contact = this.getContact(uuid, true)
     if (!contact) return
     
-    let logItem = contact.log.last()
+    const entries = contact.log.all()
+    let logItem
+    for (let a = entries.length - 1; a >= 0; a--) {
+      if (!entries[a].removed && 
+        entries[a].uuid === this.data.uuid) {
+        logItem = entries[a]
+        break
+      }
+    }
     if (ts) logItem = contact.log.get(ts).item
     if (!logItem) return
 

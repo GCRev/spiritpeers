@@ -22,6 +22,7 @@ class MessageDisplay extends React.Component {
 
   handleOnClick() {
     if (this.props.spiritClient && 
+      !this.props.isTarget &&
       this.props.target &&
       !this.props.editMessage &&
       this.props.ts) {
@@ -46,6 +47,9 @@ class MessageDisplay extends React.Component {
     let className = [this.props.isTarget ? 'from-target ' : 'from-source ']
     if (this.props.offline)  className.push('offline') 
     if (this.props.editMessage) className.push('edit-message')
+    if (this.props.removed) className.push('removed')
+    const showEditIndicator = this.props.edited || this.props.removed
+    const editIndicatorText = this.props.removed ? 'USER IS TRYING TO GASLIGHT YOU' : 'EDITED'
     return (
       <message is="div" class={className.join(' ')} onClick={this.handleOnClick}>
         <div className="message-wrapper">
@@ -66,8 +70,8 @@ class MessageDisplay extends React.Component {
             </div>
           }
           {
-            this.props.edited &&
-            <div className="edit-indicator">EDITED</div>
+            showEditIndicator &&
+            <div className="edit-indicator">{editIndicatorText}</div>
           }
         </div>
       </message>
@@ -91,18 +95,17 @@ class MessageHistoryDisplay extends React.Component {
     })
   }
 
-  handleMessageReceived(args) {
-    console.log(args)
-    this.setState({
-      log: args.source.log
-    })
+  handleMessaging() {
+    if (this.state.target) {
+      this.setState({
+        log: this.state.target.log
+      })
+    }
   }
 
-  handleMessageSent(args) {
-    this.setState({
-      log: args.target.log
-    })
-  }
+  handleMessageReceived(args) { }
+
+  handleMessageSent(args) { }
 
   handleMessagePreview(md) {
     this.setState({
@@ -117,6 +120,7 @@ class MessageHistoryDisplay extends React.Component {
 
   componentDidMount() {
     this.props.spiritClient.on('talk-to', this.handleTalkTo, this)
+    this.props.spiritClient.on('messaging', this.handleMessaging, this)
     this.props.spiritClient.on('message-received', this.handleMessageReceived, this)
     this.props.spiritClient.on('message-sent', this.handleMessageSent, this)
     this.props.spiritClient.on('message-preview', this.handleMessagePreview, this)
@@ -124,6 +128,7 @@ class MessageHistoryDisplay extends React.Component {
 
   componentWillUnmount() {
     this.props.spiritClient.un('talk-to', this.handleTalkTo, this)
+    this.props.spiritClient.un('messaging', this.handleMessaging, this)
     this.props.spiritClient.un('message-received', this.handleMessageReceived, this)
     this.props.spiritClient.un('message-sent', this.handleMessageSent, this)
     this.props.spiritClient.un('message-preview', this.handleMessagePreview, this)
@@ -138,6 +143,10 @@ class MessageHistoryDisplay extends React.Component {
         messages = [...this.state.target.log.all()].reverse()
       }
     }
+    messages = messages.filter(entry => {
+      const isTarget = entry.uuid === this.state.target.uuid
+      return (!isTarget && !entry.removed) || isTarget 
+    })
     return (
       <div className="message-history">
         {!!messages.length &&
@@ -186,7 +195,6 @@ class ChatBoxDisplay extends React.Component {
     this.timerId = -1
     if (data.target && data.editMessage) {
       const targetEntryResult = data.target.log.get(data.editMessage)
-      console.log(targetEntryResult)
       if (targetEntryResult.item) {
         this.initialContent = targetEntryResult.item.md
       }
@@ -279,17 +287,18 @@ class ChatBoxDisplay extends React.Component {
       case 'Enter':
         evt.preventDefault()
         if (target) {
-          this.setState({disabled: true})
-          const result = await target.message(this.chatBoxRef.current.innerText, this.props.editMessage)
-          if (result.offline) {
-            /* do something different? */
-          }
-          this.setState({disabled: false})
+          const md = this.chatBoxRef.current.innerText
           this.chatBoxRef.current.innerText = ''
           if (this.props.editMessage) {
             this.props.spiritClient.editMessage()
           } else {
             this.props.spiritClient.previewMessage()
+          }
+          const result = await target.message(md, this.props.editMessage, {
+            ...!!this.props.editMessage && {edited: true}
+          })
+          if (result.offline) {
+            /* do something different? */
           }
         }
         break
