@@ -74,6 +74,48 @@ ipcMain.handle('get-env-path', (evt, type) => {
   }
 })
 
+ipcMain.handle('web-req', (evt, args) => {
+  return new Promise(resolve => {
+    const { url, method='GET', headers, params } = args
+    const req = net.request({
+      method: method,
+      url: url
+    })
+    if (typeof headers === 'object') {
+      for (const headerName in headers) {
+        req.setHeader(headerName, headers[headerName])
+      }
+    }
+    req.on('error', err => {
+      resolve({
+        status: 'error',
+        message: 'Could not connect to server' 
+      })
+    })
+    req.on('response', response => {
+      let buffer = ''
+      response.on('data', chunk => {
+        buffer += chunk.toString()
+      })
+      response.on('end', () => {
+        try {
+          resolve(JSON.parse(buffer))
+        } catch (err) {
+          resolve({
+            status: 'error',
+            message: err.message 
+          })
+        }
+      })
+    })
+    if (params) {
+      const sendBuffer = Buffer.from(JSON.stringify(params), 'utf-8')
+      req.write(sendBuffer)
+    }
+    req.end()
+  })
+})
+
 ipcMain.handle('talk-to', (evt, args) => {
   return new Promise(resolve => {
     const { url, params } = args

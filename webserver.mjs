@@ -318,7 +318,7 @@ app.get('/cache', (req, res) => {
 })
 
 app.get('/info', (req, res) => {
-  res.json({ip: req.headers['x-forwarded-for'] || req.connection.remoteAddress})
+  res.json({ip: req.headers['x-forwarded-for'] || req.connection.remoteAddress, ts: Date.now()})
 })
 
 app.get('/*', (request, response) => {

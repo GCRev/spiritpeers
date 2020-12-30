@@ -173,7 +173,7 @@ class MessageHistoryDisplay extends React.Component {
             md={this.state.previewMd}
             preview={true}
             title={this.props.spiritClient.getTitle()}
-            ts={Date.now()}
+            ts={this.props.spiritClient.now()}
           ></MessageDisplay>
         }
       </div>

@@ -119,7 +119,7 @@ class Contact extends Evt {
     return result
   }
 
-  writeToLog(md, uuid, ts=Date.now(), params={}) {
+  writeToLog(md, uuid, ts=this.spiritClient.now(), params={}) {
     const messageResult = this.log.get(ts)
     if (!messageResult.item) {
       this.log.add({ts: ts, uuid: uuid || this.uuid, md: md, ...params})
@@ -186,7 +186,7 @@ class Contact extends Evt {
     return false
   }
 
-  async message(md, ts=Date.now(), params={}) {
+  async message(md, ts=this.spiritClient.now(), params={}) {
     let result = {}
 
     try {
@@ -285,6 +285,8 @@ class SpiritClient extends Evt {
         return true
       }
     }
+    this.tsOffset = 0
+    this._sinceLastOffset = 0
     this.data = new Proxy(data, proxy)
     this.vault = {contacts: {}}
     this.getVaultFile()
@@ -685,6 +687,7 @@ class SpiritClient extends Evt {
                 if (messageResult.item) {
                   delete messageResult.item.offline
                 }
+                await this.writeVaultFile()
                 this.fire('messaging', {source: this, target: targetContact})
               } catch (err) {
                 /* do nothing */
@@ -805,6 +808,8 @@ class SpiritClient extends Evt {
       }
     }
 
+    await this.getTsOffset()
+
     const result = await ipcr.invoke('talk-to', {
       url: `http://${SERVER_URL}/talkto`,
       params: {
@@ -846,7 +851,7 @@ class SpiritClient extends Evt {
     return
   }
 
-  async message(target, md, ts=Date.now(), params={}) {
+  async message(target, md, ts=this.now(), params={}) {
     const data = {
       md: md,
       ts: ts,
@@ -928,6 +933,7 @@ class SpiritClient extends Evt {
       hash.update(password)
       const buffer = hash.digest() 
       this.setHash(Buffer.from(buffer))
+      this.getTsOffset()
 
       try {
         await this.loadVaultFile()
@@ -945,7 +951,7 @@ class SpiritClient extends Evt {
     const eventParams = Object.assign({
       title: 'Notification',
       content: 'This is a notification',
-      ts: Date.now(),
+      ts: this.now(),
       id: crypto.randomBytes(20).toString('hex')
     }, params)
 
@@ -1007,6 +1013,32 @@ class SpiritClient extends Evt {
     this.fire('delete-contact', {contact: contact})
     return contact
   }
+
+  async getTsOffset() {
+    if (this._sinceLastOffset) {
+      this._sinceLastOffset--
+      return this.tsOffset
+    }
+
+    const startTs = Date.now()
+    const result = await ipcr.invoke('web-req', {
+      url: `http://${SERVER_URL}/info`,
+    })
+
+    /*
+     * normal case
+     * start     server        end
+     *   ├─────────┼────────────┤
+     *
+     * shad's case
+     * start    end           server
+     *   ├───────┤              │   
+     */
+
+    this.tsOffset = result.ts - startTs
+    this._sinceLastOffset = 8
+    return this.tsOffset
+  }
   
   previewMessage(md) {
     this.fire('message-preview', md)
@@ -1033,6 +1065,10 @@ class SpiritClient extends Evt {
     if (!logItem) return
 
     this.fire('message-edit', {contact: contact, logEntry: logItem})
+  }
+  
+  now() {
+    return Date.now() + this.tsOffset
   }
 }
 
