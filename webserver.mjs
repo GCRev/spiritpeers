@@ -164,7 +164,6 @@ async function loadCache() {
     })
 
     fileRead.on('error', err => {
-      console.log('ass')
       console.log(err)
     })
 

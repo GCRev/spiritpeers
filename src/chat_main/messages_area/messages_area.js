@@ -426,7 +426,7 @@ class MessageAreaDisplay extends React.Component {
   }
 
   render() {
-    const headerText = this.state.target ? this.state.target.getTitle() : 'ass'
+    const headerText = this.state.target ? this.state.target.getTitle() : 'Loading...'
     return (
       <div id="message-area">
         <div className="title">{headerText}</div>
