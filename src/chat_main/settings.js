@@ -1,5 +1,5 @@
 import React from 'react'
-import { GridForm, ToolbarDisplay } from '../Components'
+import { GridForm, ToolbarDisplay } from '../components'
 
 class SettingsDisplay extends React.Component {
   constructor(data) {

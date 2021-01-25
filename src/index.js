@@ -1,9 +1,9 @@
 import React from 'react'
 import ReactDOM from 'react-dom'
 import './index.css'
-import AppDisplay from './App'
+import AppDisplay from './app'
 import reportWebVitals from './reportWebVitals'
-import SpiritClient from './spiritClient'
+const { SpiritClient } = window.require('spirit-client')
 
 const spiritClient = new SpiritClient()
 window.spiritClient = spiritClient

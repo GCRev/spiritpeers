@@ -1,4 +1,4 @@
-import Evt from './Evt'
+const { Evt } = require('./Evt.js')
 
 class OrderedObjectList extends Evt {
   constructor(args, ...items) {
@@ -331,4 +331,4 @@ class OrderedObjectList extends Evt {
   }
 }
 
-export default OrderedObjectList
+exports.OrderedObjectList = OrderedObjectList

@@ -1,23 +1,18 @@
-ass
-
 ## Available Scripts
 
 In the project directory, you can run:
 
 ### `npm run start`
 
-Runs the app in the development mode.\
-Project automatically opens an elecrton app that lins to http://localhost:3000 .\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+Runs the app in the development mode.
 
-Webpack's dev-server doesn't shut off correctly because it's trash, so make sure to go into
-processes and end all of its tasks. Otherwise it will cache files and prevent reloads from happening
-in certain instances.
+Project automatically opens an Electron app that links to http://localhost:3000
 
-Also, Webpack is trashe a second time because it flops `import` and `export` statements about. In
-order to properly use node-native modules, you have to write 
+After changing file names, the WebPack dev server needs to be fully-refreshed. On Windows this
+requires you to open the task manager and manually kill the WebPack process, which doesn't shut down
+with a SIGKILL.
+
+In order to properly use node-native modules with WebPack and Electron, you have to write
 
 ```javascript
 const module = window.require('module')

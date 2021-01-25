@@ -1,7 +1,7 @@
 import { render } from '@testing-library/react'
 import React from 'react'
 import { CSSTransition } from 'react-transition-group'
-import './Components.css'
+import './components.css'
 
 class Overlay extends React.Component {
   constructor(data) {

@@ -1,11 +1,11 @@
-import '../App'
+import '../app'
 import '../index'
-import './ChatMain.css'
-import MessageAreaDisplay from './MessagesArea/MessagesArea'
-import ConversationsDisplay from './SideBarArea/Conversations'
-import ContactEditDisplay from './ContactEdit'
-import SettingsDisplay from './Settings'
-import { ToolbarDisplay, Overlay, Icon } from '../Components'
+import './chat_main.css'
+import MessageAreaDisplay from './messages_area/messages_area'
+import ConversationsDisplay from './side_bar_area/conversations'
+import ContactEditDisplay from './contact_edit'
+import SettingsDisplay from './settings'
+import { ToolbarDisplay, Overlay, Icon } from '../components'
 import React from 'react'
 
 class UserInfo extends React.Component {

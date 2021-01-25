@@ -1,3 +1,4 @@
+const ANY_NAME = '!ANY'
 class Evt {
   constructor() {
     Object.defineProperty(this, 'listeners', {
@@ -80,24 +81,25 @@ class Evt {
     if (!evtName) return
 
     const existingListeners = this.listeners.get(evtName)
-    if (!existingListeners) return
-
-    for (const [evtFn, evtOb] of existingListeners) {
-      if (typeof scope !== 'undefined') {
-        evtFn.call(scope, payload)
-      } else if (evtOb.scope) {
-        evtFn.call(evtOb.scope, payload)
-      } else {
-        evtFn.call(this, payload)
+    if (existingListeners) {
+      for (const [evtFn, evtOb] of existingListeners) {
+        if (typeof scope !== 'undefined') {
+          evtFn.call(scope, payload)
+        } else if (evtOb.scope) {
+          evtFn.call(evtOb.scope, payload)
+        } else {
+          evtFn.call(this, payload)
+        }
+        if (evtOb.once) {
+          existingListeners.delete(evtFn) 
+        }
       }
-      if (evtOb.once) {
-        existingListeners.delete(evtFn) 
+      if (!existingListeners.size) {
+        this.listeners.delete(evtName)
       }
     }
-    if (!existingListeners.size) {
-      this.listeners.delete(evtName)
-    }
+    if (evtName !== ANY_NAME) this.fire(ANY_NAME, {evt: evtName, payload: payload, scope: scope}, scope)
   }
 }
 
-export default Evt
+exports.Evt = Evt

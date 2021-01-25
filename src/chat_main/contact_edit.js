@@ -1,5 +1,5 @@
 import React from 'react'
-import { Icon, ToolbarDisplay, GridForm } from '../Components'
+import { Icon, ToolbarDisplay, GridForm } from '../components'
 
 class ContactEditDisplay extends React.Component {
   constructor(data) {

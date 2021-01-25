@@ -1,16 +1,14 @@
-import Evt from './Evt'
-import Config from './config.mjs'
-import OrderedObjectList from './orderedList'
-// import {v4 as uuidv4} from 'uuid'
-const ipcr = window.require('electron').ipcRenderer
-const fs = window.require('fs')
-const fsp = window.require('fs').promises
-const crypto = window.require('crypto')
-const path = window.require('path')
-// const {Transform} = window.require('stream')
-const {pipeline, finished, Readable, Writable} = window.require('stream')
-const {StringDecoder} = window.require('string_decoder')
-
+const { Evt } = require('./evt')
+const { Config } = require('../src/config')
+const { OrderedObjectList } = require('./ordered_list')
+const { pipeline, finished, Readable, Writable } = require('stream')
+const { StringDecoder } = require('string_decoder')
+const ws = require('ws')
+const fs = require('fs')
+const fsp = require('fs').promises
+const crypto = require('crypto')
+const path = require('path')
+const ipcr = require('./ipcrModule')
 
 const SERVER_URL = Config.SERVER_URL
 const ECDH_CURVE = 'secp521r1'
@@ -626,8 +624,8 @@ class SpiritClient extends Evt {
         this.webSocket.close()
       }
 
-      this.webSocket = new WebSocket(`ws://${SERVER_URL}`)
-      this.webSocket.addEventListener('error', evt => {
+      this.webSocket = new ws(`ws://${SERVER_URL}`)
+      this.webSocket.on('error', evt => {
         const message = 'Real-time connection to serverino encountered an error'
         this.notify({
           title: 'Connection Error',
@@ -636,15 +634,15 @@ class SpiritClient extends Evt {
         })
         reject(Error(message))
       })
-      this.webSocket.addEventListener('message', async evt => {
-        if (evt.data === 'connected') {
+      this.webSocket.on('message', async evt => {
+        if (evt === 'connected') {
           if (this.isWsConnected()) {
             this.webSocket.send(`cli:${this.data.uuid}`)
             resolve()
           }
-        } else if (typeof evt.data === 'string') {
-          const prefix = evt.data.split(':')[0]
-          const data = evt.data.slice(prefix.length + 1)
+        } else if (typeof evt === 'string') {
+          const prefix = evt.split(':')[0]
+          const data = evt.slice(prefix.length + 1)
           switch (prefix) {
           case 'req':
             {
@@ -711,8 +709,8 @@ class SpiritClient extends Evt {
           default:
             break
           }
-        } else if (evt.data instanceof Blob) {
-          const rawData = Buffer.from(await evt.data.arrayBuffer())
+        } else if (evt instanceof Uint8Array || evt instanceof Buffer) {
+          const rawData = Buffer.from(evt)
           const messagePrefix = Buffer.from('msg:', 'utf8')
           const infoPrefix = Buffer.from('info:', 'utf8')
           let handler = this.parseMessageReceived
@@ -877,7 +875,7 @@ class SpiritClient extends Evt {
 
   isWsConnected() {
     if (!this.webSocket) return false
-    return this.webSocket.readyState === WebSocket.OPEN
+    return this.webSocket.readyState === ws.OPEN
   }
 
   async send(prefix, target, data) {
@@ -1072,4 +1070,5 @@ class SpiritClient extends Evt {
   }
 }
 
-export default SpiritClient
+exports.SpiritClient = SpiritClient
+

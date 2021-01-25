@@ -18,8 +18,10 @@
     "react-dom": "^17.0.1",
     "react-scripts": "4.0.1",
     "react-transition-group": "^4.4.1",
+    "spirit-client": "file:client",
     "uuid": "^8.3.2",
-    "web-vitals": "^1.0.1"
+    "web-vitals": "^1.0.1",
+    "ws": "^7.4.2"
   },
   "scripts": {
     "react-start": "react-scripts start",
@@ -28,7 +30,7 @@
     "react-eject": "react-scripts eject",
     "electron-build": "electron-builder",
     "build": "npm run react-build && npm run electron-build",
-    "start": "node processIcons.js && concurrently \"cross-env BROWSER=none npm run react-start\" \"wait-on http://localhost:3000 && electron .\""
+    "start": "node process_icons.js && concurrently \"cross-env BROWSER=none npm run react-start\" \"wait-on http://localhost:3000 && electron --no-sandbox .\""
   },
   "eslintConfig": {
     "extends": [
