@@ -85,7 +85,7 @@ class Contact extends Evt {
         value: this.displayName
       },
       {
-        title: 'Notes about this loser',
+        title: 'Notes',
         prop: 'notes',
         value: this.notes
       }
