@@ -1,5 +1,4 @@
 const { Evt } = require('./evt')
-const { Config } = require('../src/config')
 const { OrderedObjectList } = require('./ordered_list')
 const { pipeline, finished, Readable, Writable } = require('stream')
 const { StringDecoder } = require('string_decoder')
@@ -8,12 +7,12 @@ const fs = require('fs')
 const fsp = require('fs').promises
 const crypto = require('crypto')
 const path = require('path')
-const ipcr = require('./ipcrModule')
+const ipcr = require('./ipcr_module')
 
-const SERVER_URL = Config.SERVER_URL
+const SERVER_URL = process.env.URL || 'localhost:54045'
 const ECDH_CURVE = 'secp521r1'
 const UUID_LEN = 25
-const LOG_LIMIT = 25
+const LOG_LIMIT = 8
 
 class Contact extends Evt {
   constructor(params) {
@@ -54,10 +53,14 @@ class Contact extends Evt {
       sharedSecret: {
         writable: true,
         enumerable: false
+      },
+      auxiliaryLog: {
+        value: new OrderedObjectList({keyName: 'ts', uniqueItems: true}),
+        enumerable: false
       }
     })
 
-    this.log = new OrderedObjectList({keyName: 'ts'})
+    this.log = new OrderedObjectList({keyName: 'ts', uniqueItems: true})
     if (params) {
       this.vaultToData(params)
     }
@@ -110,42 +113,100 @@ class Contact extends Evt {
   
   dataToVault() {
     const result = Object.assign({}, this)
-    result.log = this.log.all()
+    result.log = this.log.all().map(entry => {
+      /* delete the message history from the log item before serializing */ 
+      const logResult = Object.assign({}, entry)
+      delete logResult.history
+      return logResult
+    })
 
     result.privateKey = this.privateKey.toString('base64')
     if (this.publicKey) result.publicKey = this.publicKey.toString('base64')
     return result
   }
 
-  writeToLog(md, uuid, ts=this.spiritClient.now(), params={}) {
-    const messageResult = this.log.get(ts)
-    if (!messageResult.item) {
-      this.log.add({ts: ts, uuid: uuid || this.uuid, md: md, ...params})
-      if (this.log.length > LOG_LIMIT) {
-        this.log.remove(this.log.first())
+  /* 
+   * command the Contact to write to its own short log.
+   *
+   * optionally specify the uuid when logging outgoing messages
+   * optionally specify the ts when redacting or deleting messages
+   * optionally supply params to modify the message real good
+   */
+  _writeToLog(log, md, outgoing, ts=this.spiritClient.now(), flags={}, limit=true) {
+    const { item: message } = log.get(ts)
+
+    let wroteToLog = false
+
+    if (!message) {
+      log.add({ ts, md, flags, outgoing })
+      if (limit && log.length > LOG_LIMIT) {
+        const [ removedItem ] = log.remove(log.first())
+        this._writeToLog(this.auxiliaryLog, removedItem.md, removedItem.outgoing, removedItem.ts, removedItem.flags, false)
       }
+      wroteToLog = true
       this.fire('message-logged', this)
     } else {
-      delete params.md
-      Object.assign(messageResult.item, params)
-      const keySet = Object.keys(messageResult.item)
+      delete flags.md
+      /* 
+       * create a history of the current message history will not be serialized
+       * to the vault, but it will be reconstructed from the log file
+       */ 
+      if (!message.history) {
+        message.history = []
+      }
+      if (!md || message.md !== md) {
+        message.history.push({
+          md: message.md,
+          flags: { ...message.flags }
+          /* don't need 'ts' here because it's implied by the parent */
+        })
+      }
+      message.flags = { ...flags }
+      const keySet = Object.keys(message)
       for (const key of keySet) {
-        if (typeof messageResult.item[key] === 'undefined') {
-          delete messageResult.item[key]
+        if (typeof message[key] === 'undefined') {
+          delete message[key]
         }
       }
       if (!md) {
-        messageResult.item.removed = true
+        flags.removed = true
+        message.removed = true
+        wroteToLog = true
         this.fire('message-removed', this)
-      } else if (messageResult.item.md !== md) {
-        messageResult.item.md = md
-        messageResult.item.edited = true
+      } else if (message.md !== md) {
+        flags.edited = true
+        message.md = md
+        message.edited = true
+        wroteToLog = true
         this.fire('message-edited', this)
-      } else if (messageResult.item.md === md) {
-        delete messageResult.item.edited
+      } else if (message.md === md) {
+        delete message.edited
+        // flags.wroteToLog = true
       }
+      }
+    return wroteToLog
+  }
+
+  writeToLog(md, outgoing, ts=this.spiritClient.now(), flags={}) {
+    return this._writeToLog(this.log, md, outgoing, ts, flags)
+  }
+
+  writeToAuxiliaryLog(md, outgoing, ts, flags) {
+    const { item: message } = this.log.get(ts)
+    if (message) {
+      if (!message.history) {
+        message.history = []
+      }
+      if (md !== message.md) {
+        message.history.push({
+          md,
+          flags: { ...flags }
+          /* don't need 'ts' here because it's implied by the parent */
+        })
+      }
+    } else {
+      return this._writeToLog(this.auxiliaryLog, md, outgoing, ts, flags, false, false)
     }
-    return ts
   }
 
   conversationRequest() {
@@ -153,6 +214,9 @@ class Contact extends Evt {
     this.fire('conversation-request', this)
   }
 
+  /* 
+   * command Contact to automatically relay talk-to data to the parent client
+   */
   async talkTo() {
     if (this.state === 'pending-accept') {
       await this.spiritClient.talkTo(this.uuid)
@@ -184,15 +248,31 @@ class Contact extends Evt {
     return false
   }
 
-  async message(md, ts=this.spiritClient.now(), params={}) {
+  /*
+   * command the Contact to send a message (from us to them)
+   *
+   * optionally specify the ts when modifying or deleting an existing message
+   * optionally specify the params to set online, edited, or deleted...
+   */
+  async message(md, ts=this.spiritClient.now(), flags={}) {
     let result = {}
 
     try {
-      this.writeToLog(md, this.spiritClient.data.uuid, ts, {
+      const outgoing = true
+      const wroteToLog = this.writeToLog(md, outgoing, ts, {
         offline: true,
-        ...params
+        ...flags
       })
-      result = await this.spiritClient.message(this.uuid, md, ts, params)
+      result = await this.spiritClient.message(this.uuid, md, ts, flags)
+      if (wroteToLog) {
+        await this.spiritClient.writeToLogFile({
+          uuid: this.uuid,
+          outgoing,
+          ts,
+          flags: { offline: true, ...flags }, 
+          md
+        })
+      }
       await this.spiritClient.writeVaultFile()
     } catch (err) {
       /* uhh */
@@ -253,17 +333,32 @@ class Contact extends Evt {
     this.log.clear()
   }
 
+  clearLogHistories(clear) {
+    if (!clear) return
+    for (const item of this.log.all()) {
+      item.history = []
+    }
+  }
+
   getOfflineMessages() {
     return this.log.all().filter(item => {
-      return item.offline
+      return item.flags.offline
     })
   }
 }
 
 class SpiritClient extends Evt { 
-  constructor() {
+  constructor(params = {}) {
     super()
-    const data = {foundResourceFile: false, contacts: {}}
+    const data = {
+      foundResourceFile: false,
+      contacts: {},
+      ...params
+    }
+    this.transactions = {
+      history: [],
+      markers: new OrderedObjectList({keyName: 'ts', uniqueItems: true})
+    }
     const proxy = {
       /*
        * budget redux
@@ -283,8 +378,11 @@ class SpiritClient extends Evt {
         return true
       }
     }
+
+    this.serverUrl = SERVER_URL
     this.tsOffset = 0
     this._sinceLastOffset = 0
+    this._logQueue = []
     this.data = new Proxy(data, proxy)
     this.vault = {contacts: {}}
     this.getVaultFile()
@@ -415,7 +513,7 @@ class SpiritClient extends Evt {
 
   generateHilariousRandomIdentifier() {
     /*
-     * Generate a series of consonant+vowel pairs of a fixed (40char) length
+     * Generate a series of consonant+vowel pairs of a fixed (UUID_LEN) length
      * place a space somewhere at random in the middle
      */
     const consonants = 'bcdfghjklmnpqrstvwxyz'
@@ -507,6 +605,8 @@ class SpiritClient extends Evt {
     if (!this.data.uuid) {
       this.vault.uuid = this.generateHilariousRandomIdentifier()
       this.setUuid(this.vault.uuid)
+    } else {
+      this.vault.uuid = this.data.uuid
     }
   }
 
@@ -612,6 +712,246 @@ class SpiritClient extends Evt {
     })
   }
 
+  async purgeLogFile() {
+    const pathToLog = await this.getLogFile()
+    const writeStream = fs.createWriteStream(pathToLog)
+    writeStream.write('')
+    writeStream.end()
+  }
+
+  flagsObjectToFlagsBuffer(flagsObject) {
+    if (!flagsObject) return Buffer.from([0x0, 0x0, 0x0])
+
+    const result = Buffer.allocUnsafe(3)
+    /* 
+     * offline 0b001
+     * edited  0b010
+     * removed 0b100
+     */
+
+    let flagsBinary = 0
+
+    flagsObject.offline && (flagsBinary |= 0b001)
+    flagsObject.edited  && (flagsBinary |= 0b010)
+    flagsObject.removed && (flagsBinary |= 0b100)
+    result.writeUIntBE(flagsBinary, 0, 3)
+    return result
+  }
+
+  flagsBufferToFlagsObject(flagsBuffer) {
+    if (!flagsBuffer) return {}
+
+    const result = {}
+    /* 
+     * offline 0b001
+     * edited  0b010
+     * removed 0b100
+     */
+
+    const flagsBinary = flagsBuffer.readUIntBE(0, 3)
+
+    flagsBinary & 0b001 && (result.offline = true)
+    flagsBinary & 0b010 && (result.edited  = true)
+    flagsBinary & 0b100 && (result.removed = true)
+    return result
+  }
+
+  async writeToLogFile(args) {
+    const {
+      uuid,
+      outgoing=false,
+      ts=this.now(), /* this is the target ts of the message to log */
+      flags=Buffer.from([0x0, 0x0, 0x0]),
+      md,
+      entryTs 
+    } = args
+
+    /* 
+     * log entry structure:
+     * uuid(25-UTF8) direction(1) ts-entry(8-BE) ts-target(8-BE) flags(3) datalen(4-BE) iv(16)  buffer(n)
+     *    0 - 24         25           26-33          34-41        42-44     45-48       49-64  65-(65+n-1)
+     */
+
+    if (this._writingToLog) {
+      this._logQueue.push({
+        uuid, outgoing, ts, flags, md
+      })
+      return
+    }
+
+    this._writingToLog = true
+    const pathToLog = await this.getLogFile()
+    const writeStream = fs.createWriteStream(pathToLog, {
+      flags: 'a', /* open for appending only */
+    })
+
+    writeStream.write(Buffer.from(uuid, 'utf8'))
+    writeStream.write(Buffer.from([outgoing]))
+
+    const tsEntryBuffer = Buffer.allocUnsafe(8)
+    tsEntryBuffer.writeBigUInt64BE(BigInt(entryTs ?? this.now()))
+    writeStream.write(tsEntryBuffer)
+
+    const tsTargetBuffer = Buffer.allocUnsafe(8)
+    tsTargetBuffer.writeBigUInt64BE(BigInt(ts))
+    writeStream.write(tsTargetBuffer)
+
+    if (!(flags instanceof Buffer) && typeof flags === 'object') {
+      writeStream.write(this.flagsObjectToFlagsBuffer(flags))
+    } else {
+      writeStream.write(flags)
+    }
+
+    return new Promise(resolve => {
+      crypto.randomFill(new Uint8Array(16), (err, iv) => {
+        const cipher = crypto.createCipheriv('aes-256-cbc', this.data.hash, iv)
+
+        let buffer = Buffer.from([])
+        if (md) {
+          /* 
+           * allow for modifications to the flags of existing messages without actually
+           * storing any MD data
+           */
+          buffer = Buffer.concat([cipher.update(md, 'utf8'), cipher.final()]) 
+        }
+
+        const lenBuffer = Buffer.allocUnsafe(4)
+        lenBuffer.writeUInt32BE(buffer.length)
+        writeStream.write(lenBuffer)
+        writeStream.write(iv)
+        writeStream.write(buffer)
+        writeStream.end()
+        this._writingToLog = false
+        if (this._logQueue.length) {
+          this.writeToLogFile(this._logQueue.shift())
+            .then(resolve)
+        } else {
+          resolve()
+        }
+      })
+    })
+  }
+
+  async indexLogFile() {
+    this.transactions.markers.clear()
+
+    let lastTs = 0
+
+    return this._readLogFile(undefined, undefined, params => {
+      const { entryTs: ts, currentByte, totalBytes } = params
+      if (new Date(ts).getDate() !== new Date(lastTs).getDate()) {
+        this.transactions.markers.add({ts, offset: totalBytes - currentByte})
+      }
+      lastTs = ts
+    })
+  }
+
+  async readLogFile(startOffset, endOffset) {
+
+    this.transactions.history = []
+    for (const uuid in this.data.contacts) {
+      const contact = this.data.contacts[uuid]
+      contact.clearLogHistories(true)
+    }
+
+    return this._readLogFile(startOffset, endOffset, params => {
+      const { uuid, outgoing, targetTs, iv, encryptedDataBuffer } = params
+      if (encryptedDataBuffer.length) {
+        let data = ''
+        const decipher = crypto.createDecipheriv('aes-256-cbc', this.data.hash, iv)
+        data += decipher.update(encryptedDataBuffer, null, 'utf8')
+        data += decipher.final('utf8') 
+        params.md = data
+        delete params.iv
+        delete params.encryptedDataBuffer
+      }
+
+      params.flags = this.flagsBufferToFlagsObject(params.flags)
+
+      const contact = this.getContact(uuid, true) 
+      contact.writeToAuxiliaryLog(params.md, outgoing, targetTs, params.flags)
+
+      this.transactions.history.push(params)
+    })
+  }
+
+  async _readLogFile(startOffset, endOffset, process) {
+    const pathToLog = await this.getLogFile()
+    const readStream = fs.createReadStream(pathToLog, {
+      ...(!isNaN(endOffset) && { end: endOffset }),
+      ...(!isNaN(startOffset) && { start: startOffset })
+    })
+    let uuid = ''
+    let outgoing = false
+    let encryptedDataBuffer
+    const tsEntryBuffer = Buffer.allocUnsafe(8)
+    const tsTargetBuffer = Buffer.allocUnsafe(8)
+    const lenBuffer = Buffer.allocUnsafe(4)
+    const flags = Buffer.from([0x0, 0x0, 0x0])
+    const iv = Buffer.allocUnsafe(16)
+
+    let dataLength = 0
+    let currentByte = 0
+    let totalBytes = 0
+    let totalEvents = 0
+
+    readStream.on('data', chunk => {
+      for (const code of chunk) {
+
+        /* read only the entry ts and data length */
+        if (currentByte >= 0 && currentByte < 25) {
+          uuid += String.fromCharCode(code)
+        } else if (currentByte === 25) {
+          /* coerce to boolean */
+          outgoing = !!code
+        } else if (currentByte >= 26 && currentByte < 34) {
+          tsEntryBuffer[currentByte - 26] = code
+        } else if (currentByte >= 34 && currentByte < 42) {
+          tsTargetBuffer[currentByte - 34] = code
+        } else if (currentByte >= 42 && currentByte < 45) {
+          flags[currentByte - 42] = code
+        } else if (currentByte >= 45 && currentByte < 49) {
+          lenBuffer[currentByte - 45] = code
+        } else if (currentByte >= 49 && currentByte < 65) {
+          iv[currentByte - 49] = code 
+        } else if (currentByte >= 65) {
+          encryptedDataBuffer[currentByte - 65] = code
+        }
+
+        /* parse the entry ts and data length */
+        if (currentByte === 48) {
+          dataLength = lenBuffer.readUInt32BE(0)
+          encryptedDataBuffer = Buffer.allocUnsafe(dataLength)
+        }
+        currentByte++
+        totalBytes++
+
+        if (currentByte === 65 + dataLength) {
+          totalEvents++
+          process({
+            uuid,
+            outgoing,
+            entryTs: Number(tsEntryBuffer.readBigUInt64BE()),
+            targetTs: Number(tsTargetBuffer.readBigUInt64BE()),
+            flags,
+            iv,
+            encryptedDataBuffer,
+            totalBytes,
+            currentByte
+          })
+          uuid = ''
+          currentByte = 0
+        }
+      }
+    })
+
+    return new Promise(resolve => {
+      readStream.on('end', () => {
+        resolve({ totalBytes, totalEvents })
+      })
+    })
+  }
+
   async connect(retryOnly) {
     if (!this.data.uuid) throw Error('No uuid')
 
@@ -624,7 +964,7 @@ class SpiritClient extends Evt {
         this.webSocket.close()
       }
 
-      this.webSocket = new ws(`ws://${SERVER_URL}`)
+      this.webSocket = new ws(`ws://${this.serverUrl}`)
       this.webSocket.on('error', evt => {
         const message = 'Real-time connection to serverino encountered an error'
         this.notify({
@@ -681,9 +1021,17 @@ class SpiritClient extends Evt {
               try {
                 const ts = Number(data.slice(50))
                 const targetContact = this.getContact(target)
-                const messageResult = targetContact.log.get(ts)
-                if (messageResult.item) {
-                  delete messageResult.item.offline
+                const { item }= targetContact.log.get(ts)
+                if (item) {
+                  if (item.flags.offline) {
+                    delete item.flags.offline
+                    await this.writeToLogFile({
+                      uuid: target,
+                      outgoing: true,
+                      ts,
+                      flags: item.flags
+                    })
+                  }
                 }
                 await this.writeVaultFile()
                 this.fire('messaging', {source: this, target: targetContact})
@@ -701,7 +1049,7 @@ class SpiritClient extends Evt {
               /* 25-50 is 'this' uuid, so ignore it */
               const targetContact = this.getContact(target)
               for (const entry of targetContact.log.all()) {
-                delete entry.offline
+                delete entry.flags.offline
               }
               this.blastLogsRightOnOver(target, true)
               break
@@ -759,11 +1107,21 @@ class SpiritClient extends Evt {
   parseMessageReceived(contact, data) {
     try {
       const rjson = JSON.parse(data)
+      const outgoing = !(rjson.outgoing ?? true)
       /* this is a hack */
-      delete rjson.offline
-      contact.writeToLog(rjson.md, undefined, rjson.ts, rjson)
+      delete rjson.flags.offline
+      const  wroteToLog = contact.writeToLog(rjson.md, outgoing, rjson.ts, rjson.flags)
       this.writeVaultFile()
       this.webSocket.send(`ack:${this.data.uuid}${contact.uuid}${rjson.ts}`)
+      if (wroteToLog) {
+        this.writeToLogFile({
+          uuid: contact.uuid,
+          outgoing,
+          ts: rjson.ts,
+          flags: rjson.flags || {},
+          md: rjson.md
+        })
+      }
       this.fire('message-received', {source: contact, data: data})
       this.fire('messaging', {source: contact, target: this})
     } catch (err) {
@@ -809,7 +1167,7 @@ class SpiritClient extends Evt {
     await this.getTsOffset()
 
     const result = await ipcr.invoke('talk-to', {
-      url: `http://${SERVER_URL}/talkto`,
+      url: `http://${this.serverUrl}/talkto`,
       params: {
         source: this.data.uuid,
         target: target,
@@ -841,7 +1199,7 @@ class SpiritClient extends Evt {
     const offlineEntries = force ? contact.log.all() : contact.getOfflineMessages()
     if (offlineEntries.length) {
       for (const offlineEntry of offlineEntries) {
-        await this.message(contact.uuid, offlineEntry.md, offlineEntry.ts, {...offlineEntry})
+        await this.message(contact.uuid, offlineEntry.md, offlineEntry.ts, {...offlineEntry.flags})
       }
     }
     this.fire('messaging', {source: this, target: target})
@@ -849,12 +1207,8 @@ class SpiritClient extends Evt {
     return
   }
 
-  async message(target, md, ts=this.now(), params={}) {
-    const data = {
-      md: md,
-      ts: ts,
-      ...params
-    }
+  async message(target, md, ts=this.now(), flags={}) {
+    const data = { md, ts, flags }
     const result = await this.send('msg', target, JSON.stringify(data))
     this.fire('message-sent', {result: result, target: target, data: data})
     this.fire('messaging', {source: this, target: target})
@@ -910,13 +1264,13 @@ class SpiritClient extends Evt {
 
   async logon(username, password, email) {
     if (typeof username === 'undefined') {
-      username = Config.USERNAME || this.data.username
+      username = this.data.username
     } else if (typeof username === 'string') {
       this.setUsername(username)
     }
 
     if (typeof password === 'undefined') {
-      password = Config.PASSWORD || this.data.password
+      password = this.data.password
     } else if (typeof password === 'string') {
       this.setPassword(password)
     }
@@ -1020,7 +1374,7 @@ class SpiritClient extends Evt {
 
     const startTs = Date.now()
     const result = await ipcr.invoke('web-req', {
-      url: `http://${SERVER_URL}/info`,
+      url: `http://${this.serverUrl}/info`,
     })
 
     /*
@@ -1050,19 +1404,25 @@ class SpiritClient extends Evt {
     const contact = this.getContact(uuid, true)
     if (!contact) return
     
+    let logEntry
+    if (ts) { 
+      logEntry = contact.log.get(ts).item
+    } else {
+      /* get the last non-removed entry to edit if no ts is specified */
     const entries = contact.log.all()
-    let logItem
     for (let a = entries.length - 1; a >= 0; a--) {
       if (!entries[a].removed && 
         entries[a].uuid === this.data.uuid) {
-        logItem = entries[a]
+          logEntry = entries[a]
         break
       }
     }
-    if (ts) logItem = contact.log.get(ts).item
-    if (!logItem) return
+    }
 
-    this.fire('message-edit', {contact: contact, logEntry: logItem})
+    if (!logEntry) return
+
+    this.fire('message-edit', {contact, logEntry })
+    return { contact, logEntry }
   }
   
   now() {

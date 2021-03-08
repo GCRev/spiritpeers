@@ -45,11 +45,11 @@ class MessageDisplay extends React.Component {
 
   renderNormal() {
     let className = [this.props.isTarget ? 'from-target ' : 'from-source ']
-    if (this.props.offline) className.push('offline')
+    if (this.props.flags.offline) className.push('offline')
     if (this.props.editMessage) className.push('edit-message')
-    if (this.props.removed) className.push('removed')
-    const showEditIndicator = this.props.edited || this.props.removed
-    const editIndicatorText = this.props.removed ? 'USER IS TRYING TO GASLIGHT YOU' : 'EDITED'
+    if (this.props.flags.removed) className.push('removed')
+    const showEditIndicator = this.props.flags.edited || this.props.flags.removed
+    const editIndicatorText = this.props.flags.removed ? 'USER IS TRYING TO GASLIGHT YOU' : 'EDITED'
     return (
       <message is="div" class={className.join(' ')} onClick={this.handleOnClick}>
         <div className="message-wrapper">
@@ -154,8 +154,8 @@ class MessageHistoryDisplay extends React.Component {
       }
     }
     messages = messages.filter(entry => {
-      const isTarget = entry.uuid === this.state.target.uuid
-      return (!isTarget && !entry.removed) || isTarget
+      const isTarget = !entry.outgoing
+      return (!isTarget && !entry.flags.removed) || isTarget
     })
     return (
       <div
@@ -164,16 +164,16 @@ class MessageHistoryDisplay extends React.Component {
       >
         {!!messages.length &&
           messages.map((entry, index) => {
-            const title = entry.uuid === this.state.target.uuid ?
-              this.state.target.getTitle() :
-              this.props.spiritClient.getTitle()
+            const title = entry.outgoing ?
+              this.props.spiritClient.getTitle() :
+              this.state.target.getTitle()
             return (
               <MessageDisplay
                 key={`log-index-${index}`}
                 spiritClient={this.props.spiritClient}
                 {...entry}
                 title={title}
-                isTarget={entry.uuid === this.state.target.uuid}
+                isTarget={!entry.outgoing}
                 target={this.state.target}
                 editMessage={this.props.editingMessage && entry.ts === this.props.editMessage ? entry.ts : undefined}
               ></MessageDisplay>
@@ -308,7 +308,7 @@ class ChatBoxDisplay extends React.Component {
               this.props.spiritClient.previewMessage()
             }
             const result = await target.message(md, this.props.editMessage, {
-              ...!!this.props.editMessage && { edited: true }
+              ...(!!this.props.editMessage && { edited: true })
             })
             if (result.offline) {
               /* do something different? */
@@ -426,7 +426,7 @@ class MessageAreaDisplay extends React.Component {
   }
 
   render() {
-    const headerText = this.state.target ? this.state.target.getTitle() : 'Loading...'
+    const headerText = this.state.target ? this.state.target.getTitle() : 'No conversation'
     return (
       <div id="message-area">
         <div className="title">{headerText}</div>

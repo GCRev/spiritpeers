@@ -1,7 +1,7 @@
-const { Evt } = require('./Evt.js')
+const { Evt } = require('./evt.js')
 
 class OrderedObjectList extends Evt {
-  constructor(args, ...items) {
+  constructor(args={}, ...items) {
     super()
     Object.defineProperty(this, 'length', {
       get() {
@@ -14,7 +14,6 @@ class OrderedObjectList extends Evt {
     this.items = []
     this.proxies = []
 
-    args = args || {}
     Object.assign(this, args)
     if (!args.keyName)
       throw Error('A keyname is required')

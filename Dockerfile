@@ -3,8 +3,8 @@ FROM ubuntu:latest
 WORKDIR /root/app
 
 RUN ["apt", "update"]
+RUN ["apt", "install", "curl", "-y"]
 # RUN ["apt", "install", "git", "-y"]
-# RUN ["apt", "install", "curl", "-y"]
 # RUN ["apt", "install", "libappindicator3-1", "-y"]
 # RUN ["apt", "install", "libasound2", "-y"]
 # RUN ["apt", "install", "libatk1.0-0", "-y"]

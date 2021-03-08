@@ -4,8 +4,8 @@ if [[ -f package.json ]]; then
   PAC_BU=1
 fi
 
-DEPS="env-paths markdown-it uuid ws ./client/"
-npm install --no-package-lock --no-save $DEPS
+DEPS="./client/"
+npm install --no-package-lock --no-save --no-audit $DEPS
 
 if [[ $PAC_BU -eq 1 ]]; then
   mv package.json.bu package.json
